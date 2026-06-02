@@ -3,26 +3,41 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 * {
   box-sizing: border-box;
   padding: 0;
   margin: 0;
 }
 
-body {
-  background-color: #0A0A0F;
-  color: #E8E8F0;
-  font-family: 'Inter', system-ui, sans-serif;
+:root {
+  --bg: #0A0A0F;
+  --surface: #12121A;
+  --border: #1E1E2E;
+  --gold: #C9A84C;
+  --gold2: #E8C96B;
+  --blue: #5B8CFF;
+  --teal: #00D4AA;
+  --text: #E8E8F0;
+  --muted: #6B7280;
 }
 
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: #0A0A0F; }
-::-webkit-scrollbar-thumb { background: #1E1E2E; border-radius: 2px; }
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
 
+/* Скроллбар */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+/* Анимация пульса для маркеров карты */
 @keyframes ping-gold {
   0% { transform: scale(1); opacity: 1; }
-  75%, 100% { transform: scale(2.5); opacity: 0; }
+  75%, 100% { transform: scale(2); opacity: 0; }
 }
-.animate-ping-gold {
-  animation: ping-gold 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
+.animate-ping-gold { animation: ping-gold 2s cubic-bezier(0,0,0.2,1) infinite; }
