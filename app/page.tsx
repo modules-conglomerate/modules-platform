@@ -1,77 +1,37 @@
-
-import { createClient } from '@/lib/supabase/server'
-import { Sidebar } from '@/components/layout/Sidebar'
-import { Topbar } from '@/components/layout/Topbar'
-import { MapSection } from '@/components/home/MapSection'
-import { EventsFeed } from '@/components/home/EventsFeed'
-import { ProjectsStatus } from '@/components/home/ProjectsStatus'
-import { GlobalStats } from '@/components/home/GlobalStats'
-import { WeatherWidget } from '@/components/home/WeatherWidget'
-import type { ModuliObject, ObjectEvent } from '@/lib/types'
-
-export const revalidate = 60 // ISR — обновляем каждую минуту
-
-export default async function HomePage() {
-  const supabase = createClient()
-
-  // Параллельные запросы
-  const [
-    { data: objects },
-    { data: events },
-    { count: totalEmployees },
-    { count: totalEquipment },
-  ] = await Promise.all([
-    supabase
-      .from('objects')
-      .select('*')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('object_events')
-      .select('*, objects(name, slug)')
-      .eq('is_public', true)
-      .order('created_at', { ascending: false })
-      .limit(10),
-    supabase
-      .from('employees')
-      .select('*', { count: 'exact', head: true }),
-    supabase
-      .from('equipment')
-      .select('*', { count: 'exact', head: true }),
-  ])
-
-  const stats = {
-    total_objects:      objects?.length ?? 0,
-    construction_count: objects?.filter(o => o.status === 'construction').length ?? 0,
-    active_count:       objects?.filter(o => o.status === 'active').length ?? 0,
-    planning_count:     objects?.filter(o => o.status === 'planning').length ?? 0,
-    total_employees:    totalEmployees ?? 0,
-    total_equipment:    totalEquipment ?? 0,
-  }
-
+export default function HomePage() {
   return (
-    <div className="flex h-screen overflow-hidden bg-moduli-bg">
-      {/* Левый сайдбар */}
-      <Sidebar />
-
-      {/* Основной контент */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar />
-
-        <div className="flex flex-1 overflow-hidden">
-          {/* Центральная зона */}
-          <main className="flex-1 overflow-y-auto p-4 space-y-4">
-            <MapSection objects={objects as ModuliObject[] ?? []} />
-            <EventsFeed events={events as ObjectEvent[] ?? []} />
-            <ProjectsStatus objects={objects as ModuliObject[] ?? []} />
-          </main>
-
-          {/* Правая панель */}
-          <aside className="w-72 flex-shrink-0 overflow-y-auto border-l border-moduli-border p-4 space-y-4">
-            <GlobalStats stats={stats} />
-            <WeatherWidget />
-          </aside>
-        </div>
+    <div style={{
+      minHeight: '100vh',
+      background: '#0A0A0F',
+      color: '#E8E8F0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'column',
+      gap: '16px',
+    }}>
+      <svg viewBox="0 0 48 48" width="64" height="64">
+        <polygon
+          points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5"
+          fill="none" stroke="#C9A84C" strokeWidth="1.5"
+        />
+        <circle cx="24" cy="24" r="5" fill="#C9A84C" />
+      </svg>
+      <h1 style={{ fontSize: '32px', fontWeight: 700, letterSpacing: '0.2em', color: '#C9A84C' }}>
+        МОДУЛИ
+      </h1>
+      <p style={{ color: '#6B7280', fontSize: '13px', letterSpacing: '0.1em' }}>
+        ЦИФРОВАЯ ПЛАТФОРМА КОНГЛОМЕРАТА
+      </p>
+      <div style={{
+        marginTop: '24px',
+        padding: '12px 24px',
+        border: '1px solid #1E1E2E',
+        borderRadius: '8px',
+        color: '#6B7280',
+        fontSize: '12px',
+      }}>
+        Платформа запускается · Версия 0.1.0
       </div>
     </div>
   )
