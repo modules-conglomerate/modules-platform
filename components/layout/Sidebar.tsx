@@ -3,89 +3,74 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  Map, Radio, Sun, Leaf, BarChart2,
-  Shield, FileText, MessageSquare, Zap
-} from 'lucide-react'
-import { clsx } from 'clsx'
 
 const nav = [
-  { href: '/',           label: 'Карта объектов',  icon: Map },
-  { href: '/events',     label: 'События',          icon: Zap },
-  { href: '/streams',    label: 'Трансляции',       icon: Radio },
-  { href: '/weather',    label: 'Погода',           icon: Sun },
-  { href: '/ecology',    label: 'Экология',         icon: Leaf },
-  { href: '/analytics',  label: 'Аналитика',        icon: BarChart2 },
-  { href: '/access',     label: 'Допуски',          icon: Shield },
-  { href: '/documents',  label: 'Документы',        icon: FileText },
-  { href: '/messages',   label: 'Сообщения',        icon: MessageSquare },
+  { href: '/',          label: 'Карта объектов' },
+  { href: '/events',    label: 'События' },
+  { href: '/streams',   label: 'Трансляции' },
+  { href: '/weather',   label: 'Погода' },
+  { href: '/ecology',   label: 'Экология' },
+  { href: '/analytics', label: 'Аналитика' },
+  { href: '/access',    label: 'Допуски' },
+  { href: '/documents', label: 'Документы' },
+  { href: '/messages',  label: 'Сообщения' },
 ]
 
 export function Sidebar() {
   const path = usePathname()
   return (
-    <aside className="w-48 flex-shrink-0 flex flex-col bg-moduli-surface border-r border-moduli-border">
-      {/* Логотип */}
-      <div className="p-4 border-b border-moduli-border">
-        <div className="flex items-center gap-2 mb-1">
-          {/* Гексагональный логотип */}
-          <div className="w-8 h-8 flex items-center justify-center">
-            <svg viewBox="0 0 32 32" className="w-8 h-8">
-              <polygon
-                points="16,2 28,9 28,23 16,30 4,23 4,9"
-                fill="none" stroke="#C9A84C" strokeWidth="1.5"
-              />
-              <polygon
-                points="16,7 24,11.5 24,20.5 16,25 8,20.5 8,11.5"
-                fill="none" stroke="#C9A84C" strokeWidth="0.8" opacity="0.5"
-              />
-              <circle cx="16" cy="16" r="3" fill="#C9A84C" />
-            </svg>
-          </div>
+    <aside style={{ width: '192px', flexShrink: 0, background: '#12121A', borderRight: '1px solid #1E1E2E', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '16px', borderBottom: '1px solid #1E1E2E' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <svg viewBox="0 0 32 32" width="32" height="32">
+            <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#C9A84C" strokeWidth="1.5" />
+            <polygon points="16,7 24,11.5 24,20.5 16,25 8,20.5 8,11.5" fill="none" stroke="#C9A84C" strokeWidth="0.8" opacity="0.4" />
+            <circle cx="16" cy="16" r="3" fill="#C9A84C" />
+          </svg>
           <div>
-            <div className="text-moduli-gold font-bold text-sm tracking-widest">МОДУЛИ</div>
-            <div className="text-moduli-muted text-[9px] tracking-wider">КОНГЛОМЕРАТ</div>
+            <div style={{ color: '#C9A84C', fontWeight: 700, fontSize: '13px', letterSpacing: '0.15em' }}>МОДУЛИ</div>
+            <div style={{ color: '#6B7280', fontSize: '9px', letterSpacing: '0.1em' }}>КОНГЛОМЕРАТ</div>
           </div>
         </div>
       </div>
 
-      {/* Навигация */}
-      <div className="px-2 py-3 flex-1">
-        <div className="text-[9px] text-moduli-muted tracking-widest px-2 mb-2">
+      <div style={{ padding: '12px 8px', flex: 1 }}>
+        <div style={{ color: '#6B7280', fontSize: '9px', letterSpacing: '0.12em', padding: '0 8px', marginBottom: '8px' }}>
           ЭКОСИСТЕМА МОДУЛИ
         </div>
-        <nav className="space-y-0.5">
-          {nav.map(({ href, label, icon: Icon }) => {
+        <nav>
+          {nav.map(({ href, label }) => {
             const active = path === href
             return (
               <Link
                 key={href}
                 href={href}
-                className={clsx(
-                  'flex items-center gap-2.5 px-2 py-2 rounded text-xs transition-all',
-                  active
-                    ? 'bg-moduli-gold/10 text-moduli-gold border-l-2 border-moduli-gold'
-                    : 'text-moduli-muted hover:text-moduli-text hover:bg-moduli-border/50'
-                )}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  marginBottom: '2px',
+                  textDecoration: 'none',
+                  borderLeft: active ? '2px solid #C9A84C' : '2px solid transparent',
+                  background: active ? 'rgba(201,168,76,0.08)' : 'transparent',
+                  color: active ? '#C9A84C' : '#6B7280',
+                }}
               >
-                <Icon size={14} />
-                <span>{label}</span>
+                {label}
               </Link>
             )
           })}
         </nav>
       </div>
 
-      {/* Нижняя секция */}
-      <div className="p-4 border-t border-moduli-border text-center">
-        <div className="w-12 h-12 mx-auto mb-2">
-          <svg viewBox="0 0 48 48" className="w-full h-full opacity-30">
-            <polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5"
-              fill="none" stroke="#C9A84C" strokeWidth="1"/>
-          </svg>
-        </div>
-        <div className="text-moduli-gold text-xs font-bold tracking-widest">МОДУЛИ</div>
-        <div className="text-moduli-muted text-[9px] mt-0.5">
+      <div style={{ padding: '16px', borderTop: '1px solid #1E1E2E', textAlign: 'center' }}>
+        <svg viewBox="0 0 48 48" width="40" height="40" style={{ margin: '0 auto 8px', opacity: 0.2 }}>
+          <polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5" fill="none" stroke="#C9A84C" strokeWidth="1" />
+        </svg>
+        <div style={{ color: '#C9A84C', fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em' }}>МОДУЛИ</div>
+        <div style={{ color: '#6B7280', fontSize: '9px', marginTop: '4px', lineHeight: 1.4 }}>
           СОЗДАЁМ ИНФРАСТРУКТУРУ<br />БУДУЩЕГО
         </div>
       </div>
