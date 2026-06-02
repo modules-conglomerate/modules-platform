@@ -97,46 +97,35 @@ export function Sidebar() {
       }}>
 
         {/* Логотип */}
-        <div style={{
-          padding: '20px 16px',
-          borderBottom: '1px solid #1E1E2E',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-        }}>
           <div
             className="logo-wrap"
             style={{ cursor: 'pointer', flexShrink: 0 }}
-            onMouseEnter={() => setLogoHover(true)}
-            onMouseLeave={() => setLogoHover(false)}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/Group_1637.png"
-              alt="Модули"
+              alt="Модули логотип"
               className="logo-img"
-              style={{ width: '38px', height: '38px', objectFit: 'contain' }}
+              width={38}
+              height={38}
+              style={{ width: '38px', height: '38px', objectFit: 'contain', display: 'block' }}
+              onError={(e) => {
+                // Если PNG не нашёлся — показываем SVG-запасной вариант
+                const target = e.currentTarget
+                target.style.display = 'none'
+                const parent = target.parentElement
+                if (parent) {
+                  parent.innerHTML = `<svg viewBox="0 0 38 38" width="38" height="38">
+                    <polygon points="19,2 34,10.5 34,27.5 19,36 4,27.5 4,10.5"
+                      fill="none" stroke="#C9A84C" strokeWidth="1.5"/>
+                    <polygon points="19,8 29,13.5 29,24.5 19,30 9,24.5 9,13.5"
+                      fill="none" stroke="#C9A84C" strokeWidth="0.8" opacity="0.5"/>
+                    <circle cx="19" cy="19" r="4" fill="#C9A84C"/>
+                  </svg>`
+                }
+              }}
             />
           </div>
-          <div>
-            <div style={{
-              color: '#C9A84C',
-              fontWeight: 800,
-              fontSize: '14px',
-              letterSpacing: '0.18em',
-              lineHeight: 1,
-            }}>
-              МОДУЛИ
-            </div>
-            <div style={{
-              color: '#4B5563',
-              fontSize: '8px',
-              letterSpacing: '0.12em',
-              marginTop: '3px',
-            }}>
-              КОНГЛОМЕРАТ
-            </div>
-          </div>
-        </div>
 
         {/* Навигация */}
         <div style={{ padding: '12px 8px', flex: 1 }}>
