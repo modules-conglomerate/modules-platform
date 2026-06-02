@@ -1,59 +1,65 @@
 
-import type { ModuliObject } from '@/lib/types'
 import Link from 'next/link'
 
-const statusLabel = {
-  construction: { text: 'Строится',     color: 'text-moduli-gold',  bar: '#C9A84C' },
-  active:       { text: 'Действует',    color: 'text-moduli-teal',  bar: '#00D4AA' },
-  planning:     { text: 'Проектируется',color: 'text-moduli-blue',  bar: '#5B8CFF' },
-  archived:     { text: 'Архив',        color: 'text-moduli-muted', bar: '#6B7280' },
+interface Obj {
+  id: string
+  name: string
+  slug: string
+  status: string
+  region: string | null
+  progress_pct: number
+  deadline: string | null
 }
 
-interface Props { objects: ModuliObject[] }
+const STATUS: Record<string, { label: string; color: string }> = {
+  construction: { label: 'Строится',      color: '#C9A84C' },
+  active:       { label: 'Действует',     color: '#00D4AA' },
+  planning:     { label: 'Проектируется', color: '#5B8CFF' },
+  archived:     { label: 'Архив',         color: '#6B7280' },
+}
 
-export function ProjectsStatus({ objects }: Props) {
-  const active = objects.filter(o => o.status !== 'archived').slice(0, 5)
+export function ProjectsStatus({ objects }: { objects: Obj[] }) {
+  const shown = objects.filter(o => o.status !== 'archived').slice(0, 5)
 
   return (
-    <div className="bg-moduli-surface border border-moduli-border rounded-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold tracking-wider">СТАТУС ПРОЕКТОВ</h2>
-        <Link href="/objects" className="text-[11px] text-moduli-muted hover:text-moduli-gold transition-colors">
-          Все проекты ↓
+    <div style={{ background: '#12121A', border: '1px solid #1E1E2E', borderRadius: '8px', padding: '16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '13px', fontWeight: 600, letterSpacing: '0.1em' }}>СТАТУС ПРОЕКТОВ</h2>
+        <Link href="/objects" style={{ fontSize: '11px', color: '#6B7280', textDecoration: 'none' }}>
+          Все проекты →
         </Link>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {active.map(obj => {
-          const s = statusLabel[obj.status]
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '12px' }}>
+        {shown.map(obj => {
+          const s = STATUS[obj.status] ?? STATUS.planning
           return (
             <Link
               key={obj.id}
               href={`/objects/${obj.slug}`}
-              className="bg-moduli-bg border border-moduli-border rounded-lg p-3 hover:border-moduli-gold/40 transition-colors group"
+              style={{
+                background: '#0A0A0F', border: '1px solid #1E1E2E',
+                borderRadius: '8px', padding: '12px', textDecoration: 'none',
+                display: 'block',
+              }}
             >
-              <div className="text-[11px] font-semibold text-moduli-text group-hover:text-moduli-gold transition-colors mb-0.5 leading-tight">
+              <div style={{ fontSize: '11px', fontWeight: 600, color: '#E8E8F0', marginBottom: '2px', lineHeight: 1.3 }}>
                 {obj.name}
               </div>
-              <div className="text-[10px] text-moduli-muted mb-3">{obj.region}</div>
-
-              {/* Прогресс бар */}
-              <div className="mb-1">
-                <div className="text-lg font-bold" style={{ color: s.bar }}>
-                  {obj.progress_pct}%
-                </div>
+              <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '12px' }}>
+                {obj.region}
               </div>
-              <div className="w-full h-1 bg-moduli-border rounded-full mb-2">
-                <div
-                  className="h-1 rounded-full transition-all"
-                  style={{ width: `${obj.progress_pct}%`, background: s.bar }}
-                />
+              <div style={{ fontSize: '18px', fontWeight: 700, color: s.color, marginBottom: '4px' }}>
+                {obj.progress_pct}%
               </div>
-
-              <div className="flex items-center justify-between">
-                <span className={`text-[9px] font-bold ${s.color}`}>{s.text}</span>
+              <div style={{ width: '100%', height: '3px', background: '#1E1E2E', borderRadius: '2px', marginBottom: '8px' }}>
+                <div style={{ height: '3px', borderRadius: '2px', background: s.color, width: `${obj.progress_pct}%` }} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '9px', fontWeight: 700, color: s.color }}>{s.label}</span>
                 {obj.deadline && (
-                  <span className="text-[9px] text-moduli-muted">
-                    Сдача: {new Date(obj.deadline).toLocaleDateString('ru', { month: 'short', year: 'numeric' })}
+                  <span style={{ fontSize: '9px', color: '#6B7280' }}>
+                    {new Date(obj.deadline).toLocaleDateString('ru', { month: 'short', year: 'numeric' })}
                   </span>
                 )}
               </div>
