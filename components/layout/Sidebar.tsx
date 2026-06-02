@@ -3,6 +3,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 
 const nav = [
   { href: '/',          label: 'Карта объектов' },
@@ -18,62 +19,167 @@ const nav = [
 
 export function Sidebar() {
   const path = usePathname()
+  const [logoHover, setLogoHover] = useState(false)
+
   return (
-    <aside style={{ width: '192px', flexShrink: 0, background: '#12121A', borderRight: '1px solid #1E1E2E', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '16px', borderBottom: '1px solid #1E1E2E' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <svg viewBox="0 0 32 32" width="32" height="32">
-            <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#C9A84C" strokeWidth="1.5" />
-            <polygon points="16,7 24,11.5 24,20.5 16,25 8,20.5 8,11.5" fill="none" stroke="#C9A84C" strokeWidth="0.8" opacity="0.4" />
-            <circle cx="16" cy="16" r="3" fill="#C9A84C" />
-          </svg>
+    <>
+      <style>{`
+        @keyframes rotateSlow {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        @keyframes pulseGlow {
+          0%, 100% { filter: drop-shadow(0 0 6px rgba(201,168,76,0.4)); }
+          50%       { filter: drop-shadow(0 0 18px rgba(201,168,76,0.9)); }
+        }
+        @keyframes pulseGlowFast {
+          0%, 100% { filter: drop-shadow(0 0 8px rgba(201,168,76,0.6)); }
+          50%       { filter: drop-shadow(0 0 24px rgba(255,200,50,1)); }
+        }
+        .logo-wrap {
+          animation: pulseGlow 3s ease-in-out infinite;
+          transition: transform 0.3s ease;
+        }
+        .logo-wrap:hover {
+          animation: pulseGlowFast 1s ease-in-out infinite;
+          transform: scale(1.08);
+        }
+        .logo-img {
+          transition: transform 0.6s ease;
+        }
+        .logo-wrap:hover .logo-img {
+          transform: rotate(15deg) scale(1.05);
+        }
+        .nav-link {
+          display: flex;
+          align-items: center;
+          padding: 8px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          margin-bottom: 2px;
+          text-decoration: none;
+          border-left: 2px solid transparent;
+          color: #6B7280;
+          transition: all 0.2s ease;
+          position: relative;
+          overflow: hidden;
+        }
+        .nav-link:hover {
+          color: #E8C96B;
+          background: rgba(201,168,76,0.06);
+          border-left-color: rgba(201,168,76,0.4);
+        }
+        .nav-link.active {
+          color: #C9A84C;
+          background: rgba(201,168,76,0.1);
+          border-left-color: #C9A84C;
+        }
+        .nav-link::after {
+          content: '';
+          position: absolute;
+          left: 0; top: 0; bottom: 0;
+          width: 0;
+          background: rgba(201,168,76,0.04);
+          transition: width 0.3s ease;
+        }
+        .nav-link:hover::after {
+          width: 100%;
+        }
+      `}</style>
+
+      <aside style={{
+        width: '200px',
+        flexShrink: 0,
+        background: '#0D0D14',
+        borderRight: '1px solid #1E1E2E',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+
+        {/* Логотип */}
+        <div style={{
+          padding: '20px 16px',
+          borderBottom: '1px solid #1E1E2E',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
+          <div
+            className="logo-wrap"
+            style={{ cursor: 'pointer', flexShrink: 0 }}
+            onMouseEnter={() => setLogoHover(true)}
+            onMouseLeave={() => setLogoHover(false)}
+          >
+            <img
+              src="/Group_1637.png"
+              alt="Модули"
+              className="logo-img"
+              style={{ width: '38px', height: '38px', objectFit: 'contain' }}
+            />
+          </div>
           <div>
-            <div style={{ color: '#C9A84C', fontWeight: 700, fontSize: '13px', letterSpacing: '0.15em' }}>МОДУЛИ</div>
-            <div style={{ color: '#6B7280', fontSize: '9px', letterSpacing: '0.1em' }}>КОНГЛОМЕРАТ</div>
+            <div style={{
+              color: '#C9A84C',
+              fontWeight: 800,
+              fontSize: '14px',
+              letterSpacing: '0.18em',
+              lineHeight: 1,
+            }}>
+              МОДУЛИ
+            </div>
+            <div style={{
+              color: '#4B5563',
+              fontSize: '8px',
+              letterSpacing: '0.12em',
+              marginTop: '3px',
+            }}>
+              КОНГЛОМЕРАТ
+            </div>
           </div>
         </div>
-      </div>
 
-      <div style={{ padding: '12px 8px', flex: 1 }}>
-        <div style={{ color: '#6B7280', fontSize: '9px', letterSpacing: '0.12em', padding: '0 8px', marginBottom: '8px' }}>
-          ЭКОСИСТЕМА МОДУЛИ
+        {/* Навигация */}
+        <div style={{ padding: '12px 8px', flex: 1 }}>
+          <div style={{
+            color: '#374151',
+            fontSize: '9px',
+            letterSpacing: '0.14em',
+            padding: '0 10px',
+            marginBottom: '8px',
+          }}>
+            ЭКОСИСТЕМА МОДУЛИ
+          </div>
+          <nav>
+            {nav.map(({ href, label }) => {
+              const active = path === href
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`nav-link${active ? ' active' : ''}`}
+                >
+                  {label}
+                </Link>
+              )
+            })}
+          </nav>
         </div>
-        <nav>
-          {nav.map(({ href, label }) => {
-            const active = path === href
-            return (
-              <Link
-                key={href}
-                href={href}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '8px',
-                  borderRadius: '6px',
-                  fontSize: '12px',
-                  marginBottom: '2px',
-                  textDecoration: 'none',
-                  borderLeft: active ? '2px solid #C9A84C' : '2px solid transparent',
-                  background: active ? 'rgba(201,168,76,0.08)' : 'transparent',
-                  color: active ? '#C9A84C' : '#6B7280',
-                }}
-              >
-                {label}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
 
-      <div style={{ padding: '16px', borderTop: '1px solid #1E1E2E', textAlign: 'center' }}>
-        <svg viewBox="0 0 48 48" width="40" height="40" style={{ margin: '0 auto 8px', opacity: 0.2 }}>
-          <polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5" fill="none" stroke="#C9A84C" strokeWidth="1" />
-        </svg>
-        <div style={{ color: '#C9A84C', fontSize: '11px', fontWeight: 700, letterSpacing: '0.2em' }}>МОДУЛИ</div>
-        <div style={{ color: '#6B7280', fontSize: '9px', marginTop: '4px', lineHeight: 1.4 }}>
-          СОЗДАЁМ ИНФРАСТРУКТУРУ<br />БУДУЩЕГО
+        {/* Нижний блок */}
+        <div style={{
+          padding: '16px',
+          borderTop: '1px solid #1E1E2E',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: '8px', color: '#374151', letterSpacing: '0.1em', marginBottom: '4px' }}>
+            10:24:31 · 24 мая 2025
+          </div>
+          <div style={{ fontSize: '9px', color: '#4B5563', lineHeight: 1.5 }}>
+            СОЗДАЁМ ИНФРАСТРУКТУРУ<br />БУДУЩЕГО
+          </div>
         </div>
-      </div>
-    </aside>
+
+      </aside>
+    </>
   )
 }
