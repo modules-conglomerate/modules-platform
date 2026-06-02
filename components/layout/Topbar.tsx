@@ -1,45 +1,64 @@
-
 import Link from 'next/link'
-import { Search, Bell } from 'lucide-react'
 
 const links = [
-  { href: '/',           label: 'ГЛАВНАЯ' },
-  { href: '/objects',    label: 'ОБЪЕКТЫ' },
-  { href: '/products',   label: 'ПРОДУКЦИЯ' },
-  { href: '/employees',  label: 'СОТРУДНИКИ' },
-  { href: '/equipment',  label: 'ТЕХНИКА' },
-  { href: '/analytics',  label: 'АНАЛИТИКА' },
-  { href: '/knowledge',  label: 'БИБЛИОТЕКА' },
+  { href: '/',          label: 'ГЛАВНАЯ' },
+  { href: '/objects',   label: 'ОБЪЕКТЫ' },
+  { href: '/products',  label: 'ПРОДУКЦИЯ' },
+  { href: '/employees', label: 'СОТРУДНИКИ' },
+  { href: '/equipment', label: 'ТЕХНИКА' },
+  { href: '/analytics', label: 'АНАЛИТИКА' },
+  { href: '/knowledge', label: 'БИБЛИОТЕКА' },
 ]
 
 export function Topbar() {
   return (
-    <header className="h-14 flex items-center justify-between px-6 border-b border-moduli-border bg-moduli-surface flex-shrink-0">
-      <nav className="flex items-center gap-6">
+    <header style={{
+      height: '56px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '0 24px',
+      borderBottom: '1px solid #1E1E2E',
+      background: '#12121A',
+      flexShrink: 0,
+    }}>
+      <nav style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
         {links.map(({ href, label }) => (
           <Link
             key={href}
             href={href}
-            className="text-xs font-medium tracking-wider text-moduli-muted hover:text-moduli-gold transition-colors"
+            style={{
+              fontSize: '11px',
+              fontWeight: 500,
+              letterSpacing: '0.1em',
+              color: '#6B7280',
+              textDecoration: 'none',
+            }}
           >
             {label}
           </Link>
         ))}
       </nav>
-      <div className="flex items-center gap-3">
-        <button className="p-2 text-moduli-muted hover:text-moduli-text transition-colors">
-          <Search size={16} />
-        </button>
-        <button className="p-2 text-moduli-muted hover:text-moduli-text transition-colors">
-          <Bell size={16} />
-        </button>
-        <div className="flex items-center gap-2 pl-3 border-l border-moduli-border">
-          <div className="w-7 h-7 rounded-full bg-moduli-gold/20 border border-moduli-gold/40 flex items-center justify-center text-xs text-moduli-gold font-medium">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          paddingLeft: '16px',
+          borderLeft: '1px solid #1E1E2E',
+        }}>
+          <div style={{
+            width: '28px', height: '28px', borderRadius: '50%',
+            background: 'rgba(201,168,76,0.15)',
+            border: '1px solid rgba(201,168,76,0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '12px', color: '#C9A84C', fontWeight: 600,
+          }}>
             А
           </div>
           <div>
-            <div className="text-xs font-medium">Аджна</div>
-            <div className="text-[10px] text-moduli-muted">Администратор</div>
+            <div style={{ fontSize: '12px', fontWeight: 500, color: '#E8E8F0' }}>Аджна</div>
+            <div style={{ fontSize: '10px', color: '#6B7280' }}>Администратор</div>
           </div>
         </div>
       </div>
