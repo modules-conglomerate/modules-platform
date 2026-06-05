@@ -54,7 +54,7 @@ export default async function EcologyPage() {
     byObject[d.object_id]!.push(d)
   })
 
-  const latestBySensor: Record<string, Record<string, typeof ecoData[0]>> = {}
+  const latestBySensor: Record<string, Record<string, any>> = {}
   ecoData?.forEach(function(d) {
     if (!d.object_id) return
     if (!latestBySensor[d.object_id]) latestBySensor[d.object_id] = {}
