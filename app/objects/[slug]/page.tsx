@@ -241,39 +241,65 @@ export default async function ObjectPage({ params }: Props) {
               </div>
             </div>
 
-            {/* Быстрые действия */}
+           {/* Действия */}
             <div style={{ background: '#12121A', border: '1px solid #1E1E2E', borderRadius: '8px', padding: '16px' }}>
               <div style={{ fontSize: '10px', color: '#6B7280', letterSpacing: '0.12em', marginBottom: '12px' }}>
-                РАЗДЕЛЫ ОБЪЕКТА
+                ДЕЙСТВИЯ
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                {[
-                  { href: `/objects/${obj.slug}/eco`,     label: 'Экологический паспорт', icon: '🌿' },
-                  { href: `/objects/${obj.slug}/archive`, label: 'Сезонный архив',         icon: '📷' },
-                  { href: `/objects/${obj.slug}/live`,    label: 'Трансляции 24/7',        icon: '📡' },
-                  { href: `/objects/${obj.slug}/twin`,    label: 'Цифровой двойник',       icon: '⬡' },
-                ].map(function(item) {
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '10px',
-                        padding: '10px 12px', borderRadius: '6px',
-                        background: 'rgba(255,255,255,0.02)', border: '1px solid #1E1E2E',
-                        textDecoration: 'none', color: '#B0B0C0', fontSize: '12px',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <span>{item.icon}</span>
-                      <span>{item.label}</span>
-                      <span style={{ marginLeft: 'auto', color: '#374151' }}>→</span>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
 
+              {/* Кнопка инвестирования */}
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(201,168,76,0.08) 0%, rgba(201,168,76,0.04) 100%)',
+                border: '1px solid rgba(201,168,76,0.3)',
+                borderRadius: '8px', padding: '14px', marginBottom: '8px',
+              }}>
+                <div style={{ fontSize: '9px', color: '#C9A84C66', letterSpacing: '0.12em', marginBottom: '6px' }}>
+                  ИНВЕСТИЦИОННАЯ ПРОГРАММА
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#C9A84C', marginBottom: '4px' }}>
+                  Усилить развитие
+                </div>
+                <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '12px', lineHeight: 1.5 }}>
+                  Поддержите объект через TON. Каждый вклад фиксируется в цифровом дневнике с полной разбивкой расходов.
+                </div>
+                
+                  href="https://t.me/moduli_invest_bot"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'block', width: '100%', padding: '10px',
+                    background: '#C9A84C', color: '#0A0A0F',
+                    fontSize: '11px', fontWeight: 800, letterSpacing: '0.1em',
+                    border: 'none', borderRadius: '6px', cursor: 'pointer',
+                    textAlign: 'center', textDecoration: 'none',
+                  }}
+                >
+                  ⬡ УСИЛИТЬ РАЗВИТИЕ
+                </a>
+              </div>
+
+              <button style={{
+                width: '100%', padding: '10px',
+                background: 'rgba(201,168,76,0.06)',
+                border: '1px solid rgba(201,168,76,0.2)',
+                borderRadius: '6px', color: '#C9A84C',
+                fontSize: '11px', fontWeight: 700,
+                letterSpacing: '0.08em', cursor: 'pointer',
+                marginBottom: '6px',
+              }}>
+                + ДОБАВИТЬ СОБЫТИЕ
+              </button>
+
+              <button style={{
+                width: '100%', padding: '10px',
+                background: 'transparent',
+                border: '1px solid #1E1E2E',
+                borderRadius: '6px', color: '#6B7280',
+                fontSize: '11px', cursor: 'pointer',
+              }}>
+                РЕДАКТИРОВАТЬ ПАСПОРТ
+              </button>
+            </div>
             {/* Добавить событие */}
             <div style={{ background: '#12121A', border: '1px solid #1E1E2E', borderRadius: '8px', padding: '16px' }}>
               <div style={{ fontSize: '10px', color: '#6B7280', letterSpacing: '0.12em', marginBottom: '12px' }}>
