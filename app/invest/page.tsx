@@ -15,7 +15,7 @@ const BENEFITS = [
   { icon: '📊', title: 'Прозрачная отчётность',   desc: 'Полная выписка расходов для налоговой' },
   { icon: '🏗',  title: 'Экскурсии на объекты',    desc: 'Посещение строительных площадок и производств' },
   { icon: '🌍', title: 'Международные программы', desc: 'Деловые поездки и отраслевые выставки' },
-  { icon: '🔢', title: 'Номер MD',                desc: 'Бессрочный персональный идентификатор MD-XXXXXX' },
+  { icon: '🔢', title: 'номер МИ',                desc: 'Бессрочный персональный идентификатор МИ-XXXXXXXX' },
 ]
 
 export default function InvestPage() {
@@ -47,7 +47,7 @@ export default function InvestPage() {
             КАРТА МОДУЛИ
           </h1>
           <div style={{ fontSize: '14px', color: '#C9A84C', fontWeight: 700, letterSpacing: '0.15em', marginBottom: '16px' }}>
-            MD-XXXXXX
+            МИ-XXXXXX
           </div>
           <p style={{ fontSize: '14px', color: '#B0B0C0', maxWidth: '600px', margin: '0 auto 28px', lineHeight: 1.7 }}>
             Инструмент участия в развитии экосистемы конгломерата. Поддержка объектов через TON,
@@ -101,7 +101,7 @@ export default function InvestPage() {
               <div style={{ fontSize: '9px', color: '#C9A84C66', letterSpacing: '0.2em' }}>МЕТАЛЛИЧЕСКАЯ</div>
             </div>
             <div style={{ fontSize: '11px', color: '#C9A84C', letterSpacing: '0.3em', marginBottom: '8px' }}>
-              MD-184272
+              МИ-184272
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
               <div>
