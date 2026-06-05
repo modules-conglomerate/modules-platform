@@ -8,6 +8,8 @@ const links = [
   { href: '/equipment', label: 'ТЕХНИКА' },
   { href: '/analytics', label: 'АНАЛИТИКА' },
   { href: '/knowledge', label: 'БИБЛИОТЕКА' },
+  { href: '/invest',    label: 'ИНВЕСТИЦИИ' },
+  { href: '/dashboard', label: 'КАБИНЕТ' },
 ]
 
 export function Topbar() {
