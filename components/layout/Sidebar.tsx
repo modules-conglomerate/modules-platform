@@ -14,6 +14,8 @@ const nav = [
   { href: '/access',    label: 'Допуски' },
   { href: '/documents', label: 'Документы' },
   { href: '/messages',  label: 'Сообщения' },
+  { href: '/invest',    label: '⬡ Инвестиции' },
+  { href: '/dashboard', label: '◈ Кабинет' },
 ]
 
 export function Sidebar() {
