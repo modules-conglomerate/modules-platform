@@ -20,7 +20,7 @@ const BENEFITS = [
 
 export default function InvestPage() {
   return (
-    <div style={{ minHeight: '100vh', background: '#0A0A0F', color: '#E8E8F0' }}>
+   <div style={{ minHeight: '100vh', height: '100vh', overflowY: 'auto', background: '#0A0A0F', color: '#E8E8F0' }}>
 
       {/* Hero */}
       <div style={{
