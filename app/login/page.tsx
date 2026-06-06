@@ -7,47 +7,60 @@ export default function LoginPage() {
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(function() {
-    // Загружаем VK ID SDK
     const script = document.createElement('script')
     script.src = 'https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js'
     script.nonce = 'csp_nonce'
+
     script.onload = function() {
-      if ('VKIDSDK' in window) {
-        const VKID = (window as any).VKIDSDK
+      if (!('VKIDSDK' in window)) return
+      const VKID = (window as any).VKIDSDK
 
-        VKID.Config.init({
-          app: 54625282,
-          redirectUrl: 'https://plgesxqkponmwmghvpin.supabase.co/auth/v1/callback',
-          responseMode: VKID.ConfigResponseMode.Callback,
-          source: VKID.ConfigSource.LOWCODE,
-          scope: 'email',
+      VKID.Config.init({
+        app: 54625282,
+        redirectUrl: 'https://modules-platform.vercel.app/auth/vk/callback',
+        responseMode: VKID.ConfigResponseMode.Callback,
+        source: VKID.ConfigSource.LOWCODE,
+        scope: 'email',
+      })
+
+      const oneTap = new VKID.OneTap()
+
+      if (containerRef.current) {
+        oneTap.render({
+          container: containerRef.current,
+          showAlternativeLogin: true,
         })
+        .on(VKID.WidgetEvents.ERROR, function(error: any) {
+          console.error('VK ID Error:', error)
+        })
+        .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function(payload: any) {
+          const code = payload.code
+          const deviceId = payload.device_id
 
-        const oneTap = new VKID.OneTap()
-
-        if (containerRef.current) {
-          oneTap.render({
-            container: containerRef.current,
-            showAlternativeLogin: true,
-          })
-          .on(VKID.WidgetEvents.ERROR, function(err: any) {
-            console.error('VK Auth error:', err)
-          })
-          .on((VKID as any).OneTapInternalEvents.LOGIN_SUCCESS, function(data: any) {
-            console.log('VK Login success:', data)
-            const code = data?.code
-            if (code) {
-              window.location.href =
-                `https://plgesxqkponmwmghvpin.supabase.co/functions/v1/vk-auth?code=${code}`
-            }
-          })
-        }
+          VKID.Auth.exchangeCode(code, deviceId)
+            .then(function(data: any) {
+              console.log('VK Auth success:', data)
+              // Отправляем на нашу Edge Function
+              if (data.access_token) {
+                window.location.href =
+                  `https://plgesxqkponmwmghvpin.supabase.co/functions/v1/vk-auth?token=${data.access_token}&user_id=${data.user_id}&email=${data.email ?? ''}`
+              } else if (code) {
+                window.location.href =
+                  `https://plgesxqkponmwmghvpin.supabase.co/functions/v1/vk-auth?code=${code}&device_id=${deviceId}`
+              }
+            })
+            .catch(function(error: any) {
+              console.error('VK Exchange error:', error)
+            })
+        })
       }
     }
-    document.head.appendChild(script)
 
+    document.head.appendChild(script)
     return function() {
-      document.head.removeChild(script)
+      if (document.head.contains(script)) {
+        document.head.removeChild(script)
+      }
     }
   }, [])
 
@@ -60,11 +73,11 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: '420px', padding: '24px' }}>
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <svg viewBox="0 0 48 48" width="48" height="48" style={{ margin: '0 auto 16px' }}>
-            <polygon points="24,3 42,13.5 42,34.5 24,45 6,34.5 6,13.5"
-              fill="none" stroke="#C9A84C" strokeWidth="1.5"/>
-            <circle cx="24" cy="24" r="5" fill="#C9A84C"/>
-          </svg>
+          <img
+            src="/Group_1637.png"
+            alt="Модули"
+            style={{ width: '56px', height: '56px', objectFit: 'contain', margin: '0 auto 16px', display: 'block' }}
+          />
           <h1 style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '0.1em', margin: '0 0 6px' }}>
             МОДУЛИ
           </h1>
@@ -81,63 +94,42 @@ export default function LoginPage() {
             АВТОРИЗАЦИЯ
           </div>
 
-          {/* VK ID One Tap кнопка */}
-         <div>
-  <script nonce="csp_nonce" src="https://unpkg.com/@vkid/sdk@<3.0.0/dist-sdk/umd/index.js"></script>
-  <script nonce="csp_nonce" type="text/javascript">
-    if ('VKIDSDK' in window) {
-      const VKID = window.VKIDSDK;
+          {/* VK ID One Tap */}
+          <div ref={containerRef} style={{ marginBottom: '8px', minHeight: '44px' }} />
 
-      VKID.Config.init({
-        app: 54625282,
-        redirectUrl: 'https://modules-platform.vercel.app/auth/vk/callback',
-        responseMode: VKID.ConfigResponseMode.Callback,
-        source: VKID.ConfigSource.LOWCODE,
-        scope: '', // Заполните нужными доступами по необходимости
-      });
+          <div style={{ fontSize: '10px', color: '#374151', textAlign: 'center', marginBottom: '20px' }}>
+            Авторизация через VK ID
+          </div>
 
-      const oneTap = new VKID.OneTap();
+          <div style={{ height: '1px', background: '#1E1E2E', margin: '20px 0' }} />
 
-      oneTap.render({
-        container: document.currentScript.parentElement,
-        showAlternativeLogin: true
-      })
-      .on(VKID.WidgetEvents.ERROR, vkidOnError)
-      .on(VKID.OneTapInternalEvents.LOGIN_SUCCESS, function (payload) {
-        const code = payload.code;
-        const deviceId = payload.device_id;
-
-        VKID.Auth.exchangeCode(code, deviceId)
-          .then(vkidOnSuccess)
-          .catch(vkidOnError);
-      });
-    
-      function vkidOnSuccess(data) {
-        // Обработка полученного результата
-      }
-    
-      function vkidOnError(error) {
-        // Обработка ошибки
-      }
-    }
-  </script>
-</div>
-
-          {/* Инвестиции через TON */}
+          {/* Инвестиции */}
           <div style={{
             background: 'rgba(201,168,76,0.05)',
             border: '1px solid rgba(201,168,76,0.2)',
             borderRadius: '8px', padding: '14px',
           }}>
-            <div style={{ fontSize: '10px', color: '#C9A84C', letterSpacing: '0.1em', marginBottom: '8px' }}>
-              ИНВЕСТИЦИИ ЧЕРЕЗ TON
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ fontSize: '10px', color: '#C9A84C', letterSpacing: '0.1em' }}>
+                ИНВЕСТИЦИИ ЧЕРЕЗ TON
+              </div>
+              <div style={{
+                fontSize: '8px', fontWeight: 700, letterSpacing: '0.06em',
+                color: '#C9A84C', padding: '3px 7px',
+                background: 'rgba(201,168,76,0.15)',
+                border: '1px solid rgba(201,168,76,0.4)',
+                borderRadius: '20px',
+                boxShadow: '0 0 10px rgba(201,168,76,0.25)',
+              }}>
+                ✦ ДЛЯ КВАЛИФИЦИРОВАННЫХ ИНВЕСТОРОВ
+              </div>
             </div>
             <div style={{ fontSize: '11px', color: '#6B7280', lineHeight: 1.6, marginBottom: '10px' }}>
-              Инвестирование через экосистему Telegram в TON-коинах.
-              Номер МИ привязывается к Telegram-боту после авторизации.
+              Инвестирование в объекты через экосистему Telegram в TON-коинах.
+              Номер МИ присваивается после приобретения инвестиционной карты в Telegram-боте.
             </div>
             
-              href="https://t.me/moduli_invest_bot"
+              href="https://t.me/modules_invest_bot"
               target="_blank"
               rel="noopener noreferrer"
               style={{
