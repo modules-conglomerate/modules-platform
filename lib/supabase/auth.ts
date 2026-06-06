@@ -1,4 +1,3 @@
-
 import { createBrowserClient } from '@supabase/ssr'
 
 export function createClient() {
@@ -15,6 +14,10 @@ export async function signInWithVK() {
     options: {
       redirectTo: `${window.location.origin}/dashboard`,
       scopes: 'email',
+      skipBrowserRedirect: false,
+      queryParams: {
+        response_type: 'code',
+      },
     },
   })
   if (error) console.error('VK auth error:', error)
