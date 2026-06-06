@@ -11,12 +11,13 @@ export function createClient() {
 export async function signInWithVK() {
   const supabase = createClient()
   const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'vkontakte' as any,
+    provider: 'custom:vkontakte' as any,
     options: {
       redirectTo: `${window.location.origin}/dashboard`,
       scopes: 'email',
     },
   })
+  if (error) console.error('VK auth error:', error)
   return { data, error }
 }
 
