@@ -201,7 +201,7 @@ export default async function ObjectPage({ params }: Props) {
                 <div style={{ fontSize: '9px', color: '#C9A84C66', letterSpacing: '0.12em', marginBottom: '4px' }}>ИНВЕСТИЦИОННАЯ ПРОГРАММА</div>
                 <div style={{ fontSize: '13px', fontWeight: 700, color: '#C9A84C', marginBottom: '4px' }}>Усилить развитие</div>
                 <div style={{ fontSize: '10px', color: '#6B7280', marginBottom: '10px', lineHeight: 1.5 }}>Поддержите объект через TON. Каждый вклад фиксируется в цифровом дневнике с полной разбивкой расходов.</div>
-                <a href="https://t.me/moduli_invest_bot" target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', padding: '10px', background: '#C9A84C', color: '#0A0A0F', fontSize: '11px', fontWeight: 800, letterSpacing: '0.1em', borderRadius: '6px', textAlign: 'center', textDecoration: 'none' }}>
+                <a href="https://t.me/modules_invest_bot" target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', padding: '10px', background: '#C9A84C', color: '#0A0A0F', fontSize: '11px', fontWeight: 800, letterSpacing: '0.1em', borderRadius: '6px', textAlign: 'center', textDecoration: 'none' }}>
                   ⬡ УСИЛИТЬ РАЗВИТИЕ
                 </a>
               </div>
