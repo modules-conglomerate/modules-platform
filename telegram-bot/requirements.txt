@@ -1,2 +1,5 @@
 aiogram==3.7.0
 httpx==0.27.0
+
+pytonconnect==3.0.5
+tonsdk==1.0.15
