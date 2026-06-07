@@ -3,3 +3,6 @@ httpx==0.27.0
 
 pytonconnect
 tonsdk==1.0.15
+
+aiodns
+aiohttp
