@@ -10,7 +10,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import asyncio
 
 # Конфиг
-BOT_TOKEN = '8939892865:AAHKAqM3Tszj-GG-BE1A9ZGOt3R1EupbXRw'
+BOT_TOKEN = '8939892865:AAEHxIQKM--p8qsBWgrn2u7pLa6K-0_jQJE'
 SUPABASE_URL = 'https://plgesxqkponmwmghvpin.supabase.co'
 SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsZ2VzeHFrcG9ubXdtZ2h2cGluIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDM0ODU1NCwiZXhwIjoyMDk1OTI0NTU0fQ.yAcLUW5_hhNrvrxzbJrBxnAbdXyZ5JTVWe38V9MvFGM'
 PLATFORM_URL = 'https://modules-platform.vercel.app'
