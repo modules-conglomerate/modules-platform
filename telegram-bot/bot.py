@@ -261,8 +261,13 @@ async def keep_alive():
         await asyncio.sleep(600)  # каждые 10 минут
 
 async def main():
-    asyncio.create_task(keep_alive())
+    # Удалите asyncio.create_task(keep_alive()) — оно сейчас не нужно
+    # так как polling будет работать, пока процесс запущен
     await dp.start_polling(bot)
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    # Если бот будет падать на Render, добавьте обработку ошибок
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"Ошибка при запуске: {e}")
