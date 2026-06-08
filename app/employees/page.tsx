@@ -224,14 +224,14 @@ export default async function EmployeesPage() {
             const accessInfo = ACCESS_LEVELS[emp.access_level ?? 1]
 
             // Имитируем подстатус на основе основного статуса
-            const substatusMap: Record<string, string> = {
-              on_site:    'На объекте',
-              in_transit: 'На маршруте',
-              working:    'Выполняет задачу',
-              in_office:  'В офисе',
-              unavailable:'В резерве',
-            }
-            const substatus = substatusMap[emp.status] ?? mainLabel
+          const substatusMap: Record<string, string> = {
+  on_site:    'На объекте',
+  in_transit: 'На маршруте',
+  working:    'Выполняет задачу',
+  in_office:  'В офисе',
+  unavailable:'В резерве',
+}
+const substatus = emp.specialization || substatusMap[emp.status] || mainLabel
             const subColor = SUBSTATUS_COLOR[substatus] ?? mainColor
 
             return (
