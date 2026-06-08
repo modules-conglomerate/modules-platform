@@ -90,7 +90,7 @@ const LINES = [
 
 export default function ProductsPage() {
   return (
-    <div style={{ minHeight: '100vh', overflowY: 'auto', background: '#0A0A0F', color: '#E8E8F0' }}>
+    <div style={{ minHeight: '100vh', background: '#0A0A0F', color: '#E8E8F0' }}>
 
       <div style={{ padding: '16px 24px', borderBottom: '1px solid #1E1E2E', background: '#0D0D14' }}>
         <h1 style={{ fontSize: '20px', fontWeight: 700, letterSpacing: '0.1em', margin: '0 0 4px' }}>
