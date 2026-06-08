@@ -76,7 +76,7 @@ export default async function ObjectPage({ params }: Props) {
   const typeLabel = TYPE_LABEL[obj.type] ?? obj.type
 
   return (
-   <div style={{ minHeight: '100vh', overflowY: 'auto', background: '#0A0A0F', color: '#E8E8F0' }}>
+   <div style={{ minHeight: '100vh', background: '#0A0A0F', color: '#E8E8F0' }}>
       <div style={{ padding: '10px 24px', borderBottom: '1px solid #1E1E2E', background: '#0D0D14', display: 'flex', alignItems: 'center', gap: '8px' }}>
         <Link href="/" style={{ color: '#374151', fontSize: '11px', textDecoration: 'none' }}>Главная</Link>
         <span style={{ color: '#1E1E2E', fontSize: '11px' }}>/</span>
