@@ -78,7 +78,7 @@ export default async function EquipmentPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', overflowY: 'auto', background: '#0A0A0F', color: '#E8E8F0' }}>
+    <div style={{ minHeight: '100vh', background: '#0A0A0F', color: '#E8E8F0' }}>
 
       <div style={{ padding: '16px 24px', borderBottom: '1px solid #1E1E2E', background: '#0D0D14', position: 'sticky', top: 0, zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
