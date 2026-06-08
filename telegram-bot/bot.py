@@ -109,7 +109,31 @@ async def process_amount(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data.startswith('pay_'))
 async def process_payment(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer('✅ Инвестиция зафиксирована!')
+    data = await state.get_data()
+    tx_hash = hashlib.sha256(
+        f"{data.get('card_id')}{data.get('object_id')}{data.get('amount')}{time.time()}".encode()
+    ).hexdigest()
+
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            f'{SUPABASE_URL}/rest/v1/investments',
+            headers=sb_headers(),
+            json={
+                'card_id': data.get('card_id'),
+                'object_id': data.get('object_id'),
+                'amount_ton': data.get('amount'),
+                'tx_hash': tx_hash,
+                'status': 'confirmed',
+            }
+        )
+
+    await callback.message.answer(
+        f'✅ *Инвестиция зафиксирована!*\n\n'
+        f'Сумма: *{data.get("amount")} TON*\n'
+        f'TX: `{tx_hash[:16]}...`\n\n'
+        f'[Открыть кабинет]({PLATFORM_URL}/dashboard)',
+        parse_mode='Markdown'
+    )
     await state.clear()
     await callback.answer()
 
