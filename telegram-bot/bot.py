@@ -67,7 +67,7 @@ async def cmd_start(message: types.Message):
 
 @dp.callback_query(F.data == 'invest')
 async def cb_invest(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer('🔑 Введите номер карты (формат MD-XXXXXXXX):', parse_mode='Markdown')
+    await callback.message.answer('🔑 Введите номер карты (формат МИ-XXXXXXXX):', parse_mode='Markdown')
     await state.set_state(InvestStates.waiting_mi_number)
     await callback.answer()
 
