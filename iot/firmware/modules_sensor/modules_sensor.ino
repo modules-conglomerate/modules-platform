@@ -12,8 +12,8 @@ const char* WIFI_PASSWORD = "ПАРОЛЬ_WIFI";
 
 const char* MQTT_HOST     = "xxxx.emqx.cloud";
 const int   MQTT_PORT     = 1883;
-const char* MQTT_USER     = "твой_пользователь";
-const char* MQTT_PASSWORD = "твой_пароль";
+const char* MQTT_USER     = "nazrOS";
+const char* MQTT_PASSWORD = "4NQJxuLuLvxGVNd";
 
 // ID объекта из Supabase (uuid объекта)
 const char* OBJECT_ID = "uuid-объекта-из-supabase";
