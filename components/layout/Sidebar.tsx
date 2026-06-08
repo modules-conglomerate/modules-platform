@@ -17,6 +17,7 @@ const nav = [
   { href: '/messages',  label: 'Сообщения' },
   { href: '/invest',    label: '⬡ Инвестиции' },
   { href: '/dashboard', label: '◈ Кабинет' },
+  { href: '/iot', label: 'Датчики IoT' },
 ]
 
 export function Sidebar() {
