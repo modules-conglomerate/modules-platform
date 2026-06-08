@@ -178,9 +178,20 @@ export default async function EcoPage({ params }: Props) {
             borderRadius: '8px', padding: '48px', textAlign: 'center',
           }}>
             <div style={{ fontSize: '40px', marginBottom: '12px', opacity: 0.3 }}>🌿</div>
-            <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
-              Датчики экомониторинга не подключены
-            </div>
+          <div style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>
+                Датчики экомониторинга не подключены
+              </div>
+              <div style={{ fontSize: '12px', color: '#374151', marginBottom: '16px' }}>
+                Установите IoT-датчики на объекте чтобы данные появились здесь автоматически
+              </div>
+              <Link href="/iot" style={{
+                padding: '10px 20px', background: 'rgba(201,168,76,0.1)',
+                border: '1px solid rgba(201,168,76,0.3)', borderRadius: '6px',
+                color: '#C9A84C', fontSize: '12px', fontWeight: 700,
+                textDecoration: 'none', display: 'inline-block',
+              }}>
+                📡 Инструкция по подключению датчиков →
+              </Link>
             <div style={{ fontSize: '12px', color: '#374151' }}>
               Данные появятся после установки IoT-датчиков на объекте
             </div>
