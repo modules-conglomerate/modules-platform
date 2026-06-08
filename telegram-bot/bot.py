@@ -74,8 +74,8 @@ async def cb_invest(callback: types.CallbackQuery, state: FSMContext):
 @dp.message(InvestStates.waiting_mi_number)
 async def process_mi_number(message: types.Message, state: FSMContext):
     mi_input = message.text.strip().upper()
-    if not mi_input.startswith('MD-') or len(mi_input) != 11:
-        await message.answer('❌ Неверный формат. Используйте MD-XXXXXXXX')
+  if not mi_input.startswith('МИ-') or len(mi_input) != 11:
+        await message.answer('❌ Неверный формат. Используйте МИ-XXXXXXXX')
         return
     card = await find_card(mi_input)
     if not card:
