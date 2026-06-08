@@ -13,6 +13,7 @@ const nav = [
   { href: '/analytics', label: 'Аналитика' },
   { href: '/access',    label: 'Допуски' },
   { href: '/documents', label: 'Документы' },
+  { href: '/documents/moderate', label: 'Модерация' },
   { href: '/messages',  label: 'Сообщения' },
   { href: '/invest',    label: '⬡ Инвестиции' },
   { href: '/dashboard', label: '◈ Кабинет' },
