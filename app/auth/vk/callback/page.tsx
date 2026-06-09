@@ -1,4 +1,3 @@
-
 'use client'
 
 import { useEffect } from 'react'
@@ -6,17 +5,17 @@ import { useEffect } from 'react'
 export default function VKCallbackPage() {
   useEffect(function() {
     const params = new URLSearchParams(window.location.search)
-    const token = params.get('token')
-    const userId = params.get('user_id')
-    const email = params.get('email') || ''
-    const code = params.get('code')
+    const token    = params.get('token')
+    const userId   = params.get('user_id')
+    const email    = params.get('email') || ''
+    const code     = params.get('code')
     const deviceId = params.get('device_id') || ''
 
-    const EDGE_URL = 'https://plgesxqkponmwmghvpin.supabase.co/functions/v1/vk-auth'
-    const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    const EDGE    = 'https://plgesxqkponmwmghvpin.supabase.co/functions/v1/vk-auth'
+    const ANON    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-    async function auth() {
-      let url = EDGE_URL
+    async function doAuth() {
+      let url = EDGE
       if (token && userId) {
         url += '?token=' + encodeURIComponent(token) + '&user_id=' + userId + '&email=' + encodeURIComponent(email)
       } else if (code) {
@@ -28,35 +27,30 @@ export default function VKCallbackPage() {
 
       try {
         const res = await fetch(url, {
+          method: 'GET',
           headers: {
-            'Authorization': 'Bearer ' + ANON_KEY,
-            'apikey': ANON_KEY,
+            'Authorization': 'Bearer ' + ANON,
+            'apikey': ANON,
           },
-          redirect: 'follow',
         })
 
-        if (res.redirected) {
-          window.location.href = res.url
-          return
-        }
-
-        const data = await res.json()
+        const text = await res.text()
+        let data: any = {}
+        try { data = JSON.parse(text) } catch { data = {} }
 
         if (data.magic_link) {
           window.location.href = data.magic_link
         } else if (data.error) {
-          console.error('Auth error:', data.error)
           window.location.href = '/login?error=' + encodeURIComponent(data.error)
         } else {
           window.location.href = '/dashboard'
         }
-      } catch (e) {
-        console.error('Fetch error:', e)
+      } catch (e: any) {
         window.location.href = '/login?error=fetch_failed'
       }
     }
 
-    auth()
+    doAuth()
   }, [])
 
   return (
@@ -65,7 +59,11 @@ export default function VKCallbackPage() {
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: '16px',
     }}>
-      <img src="/Group_1637.png" alt="Модули" style={{ width: '48px', height: '48px', objectFit: 'contain', opacity: 0.6 }} />
+      <img
+        src="/Group_1637.png"
+        alt="Модули"
+        style={{ width: '48px', height: '48px', objectFit: 'contain', opacity: 0.5 }}
+      />
       <div style={{ color: '#6B7280', fontSize: '13px', letterSpacing: '0.05em' }}>
         Авторизация через ВКонтакте...
       </div>
