@@ -1,9 +1,7 @@
 --only-binary=:all:
-aiogram
+aiogram==3.7.0
 pydantic
 pydantic-core
-httpx
-tonsdk
-pytonconnect
+httpx==0.27.0
 aiodns
-aiohttp
+aiohttp==3.9.5
