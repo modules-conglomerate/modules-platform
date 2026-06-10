@@ -184,6 +184,12 @@ async def cb_cancel(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer('Операция отменена.')
     await callback.answer()
 
+# ===== ДОБАВЛЕНО: обработчик обычных сообщений =====
+@dp.message()
+async def echo_all(message: types.Message):
+    await message.answer("Я понимаю только команды /start и кнопки. Используй их.")
+# =================================================
+
 async def main():
     await start_web_server()
     await dp.start_polling(bot)
