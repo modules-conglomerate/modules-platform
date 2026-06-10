@@ -1,198 +1,305 @@
 import os
 import logging
-import httpx
+import uuid
+import requests
 import asyncio
-import hashlib
-import time
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import Command
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiohttp import web
+from threading import Thread
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    MessageHandler,
+    filters,
+    ContextTypes,
+    ConversationHandler,
+)
 
-BOT_TOKEN = os.environ['BOT_TOKEN']
-SUPABASE_URL = os.environ['SUPABASE_URL']
-SUPABASE_SERVICE_KEY = os.environ['SUPABASE_SERVICE_KEY']
-PLATFORM_URL = 'https://modules-platform.vercel.app'
+# ── Состояния диалога ────────────────────────────────────────────────────────
+WAITING_MI_NUMBER = 1
+WAITING_OBJECT = 2
+WAITING_AMOUNT = 3
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher(storage=MemoryStorage())
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+logger = logging.getLogger(__name__)
 
-async def handle(request):
-    return web.Response(text="Modules Invest Bot is running")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+PLATFORM_URL = "https://modules-platform.vercel.app"
 
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get('/', handle)
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 10000))
-    site = web.TCPSite(runner, '0.0.0.0', port)
-    await site.start()
-    logging.info(f"Web server started on port {port}")
-
-class InvestStates(StatesGroup):
-    waiting_mi_number = State()
-    waiting_object = State()
-    waiting_amount = State()
-
+# ── Supabase headers ──────────────────────────────────────────────────────────
 def sb_headers():
     return {
-        'apikey': SUPABASE_SERVICE_KEY,
-        'Authorization': f'Bearer {SUPABASE_SERVICE_KEY}',
-        'Content-Type': 'application/json',
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
     }
 
-async def get_objects():
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f'{SUPABASE_URL}/rest/v1/objects?select=id,name,slug,status&is_public=eq.true&order=name',
-            headers=sb_headers()
+# ── Получить список объектов ────────────────────────────────────────────────
+def get_objects():
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/objects?select=id,name,slug,status&is_public=eq.true&order=name",
+            headers=sb_headers(),
+            timeout=10,
         )
         return r.json()
+    except Exception as e:
+        logger.error(f"get_objects error: {e}")
+        return []
 
-async def find_card(mi_number: str):
-    async with httpx.AsyncClient() as client:
-        r = await client.get(
-            f'{SUPABASE_URL}/rest/v1/investor_cards?card_number=eq.{mi_number}&select=*',
-            headers=sb_headers()
+# ── Найти карту по номеру ────────────────────────────────────────────────────
+def find_card(mi_number: str):
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/investor_cards?card_number=eq.{mi_number}&select=*",
+            headers=sb_headers(),
+            timeout=10,
         )
         data = r.json()
         return data[0] if data else None
+    except Exception as e:
+        logger.error(f"find_card error: {e}")
+        return None
 
-@dp.message(Command('start'))
-async def cmd_start(message: types.Message):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text='⬡ Инвестировать в объект', callback_data='invest')],
-        [InlineKeyboardButton(text='📊 Мой портфель', callback_data='portfolio')],
-        [InlineKeyboardButton(text='🌐 Открыть платформу', url=PLATFORM_URL)],
-    ])
-    await message.answer(
-        '⬡ *МОДУЛИ ИНВЕСТ*\n\nДобро пожаловать в инвестиционную программу конгломерата Модули.\n\nИнвестирование осуществляется в TON-коинах.',
-        parse_mode='Markdown',
-        reply_markup=kb
+# ── Записать инвестицию в базу ──────────────────────────────────────────────
+def save_investment(card_id: str, object_id: str, amount_ton: float, tx_hash: str):
+    try:
+        r = requests.post(
+            f"{SUPABASE_URL}/rest/v1/investments",
+            headers=sb_headers(),
+            json={
+                "card_id": card_id,
+                "object_id": object_id,
+                "amount_ton": amount_ton,
+                "tx_hash": tx_hash,
+                "status": "confirmed",
+            },
+            timeout=10,
+        )
+        return r.status_code in (200, 201)
+    except Exception as e:
+        logger.error(f"save_investment error: {e}")
+        return False
+
+# ── /start ────────────────────────────────────────────────────────────────────
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("⬡ Инвестировать в объект", callback_data="invest")],
+        [InlineKeyboardButton("📊 Мой портфель", callback_data="portfolio")],
+        [InlineKeyboardButton("🌐 Открыть платформу", url=PLATFORM_URL)],
+    ]
+    await update.message.reply_text(
+        "⬡ *МОДУЛИ ИНВЕСТ*\n\n"
+        "Добро пожаловать в инвестиционную программу конгломерата Модули.\n\n"
+        "Инвестирование осуществляется в TON-коинах.",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-@dp.callback_query(F.data == 'invest')
-async def cb_invest(callback: types.CallbackQuery, state: FSMContext):
-    await callback.message.answer(
-        '🔑 Введите номер инвестиционной карты:\n\nФормат: *МИ-XXXXXXXX* (8 цифр)',
-        parse_mode='Markdown'
+# ── Callback: Инвестировать ──────────────────────────────────────────────────
+async def invest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        "🔑 Введите номер инвестиционной карты:\n\nФормат: *МИ-XXXXXXXX* (8 цифр)",
+        parse_mode="Markdown",
     )
-    await state.set_state(InvestStates.waiting_mi_number)
-    await callback.answer()
+    return WAITING_MI_NUMBER
 
-@dp.message(InvestStates.waiting_mi_number)
-async def process_mi_number(message: types.Message, state: FSMContext):
-    mi_input = message.text.strip().upper()
-    if not mi_input.startswith('МИ-') or len(mi_input) != 11:
-        await message.answer('❌ Неверный формат. Используйте МИ-XXXXXXXX (8 цифр после МИ-)')
-        return
-    card = await find_card(mi_input)
+# ── Получить номер карты ─────────────────────────────────────────────────────
+async def process_mi_number(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    mi_input = update.message.text.strip().upper()
+    if not mi_input.startswith("МИ-") or len(mi_input) != 11:
+        await update.message.reply_text(
+            "❌ Неверный формат. Используйте МИ-XXXXXXXX (8 цифр после МИ-)"
+        )
+        return WAITING_MI_NUMBER
+
+    card = find_card(mi_input)
     if not card:
-        await message.answer('❌ Карта не найдена. Проверьте номер или приобретите карту на платформе.')
-        return
-    await state.update_data(mi_number=mi_input, card_id=card['id'])
-    objects = await get_objects()
+        await update.message.reply_text(
+            "❌ Карта не найдена. Проверьте номер или приобретите карту на платформе."
+        )
+        return WAITING_MI_NUMBER
+
+    context.user_data["mi_number"] = mi_input
+    context.user_data["card_id"] = card["id"]
+
+    objects = get_objects()
     if not objects:
-        await message.answer('Объекты не найдены. Попробуйте позже.')
-        return
+        await update.message.reply_text("Объекты не найдены. Попробуйте позже.")
+        return WAITING_MI_NUMBER
+
     buttons = []
     for o in objects[:10]:
-        icon = '🟡' if o['status'] == 'construction' else '🟢'
-        buttons.append([InlineKeyboardButton(text=f"{icon} {o['name']}", callback_data=f"obj_{o['id']}")])
-    kb = InlineKeyboardMarkup(inline_keyboard=buttons)
-    await message.answer(f'✅ Карта *{mi_input}* найдена.\n\nВыберите объект для инвестирования:', parse_mode='Markdown', reply_markup=kb)
-    await state.set_state(InvestStates.waiting_object)
+        icon = "🟡" if o["status"] == "construction" else "🟢"
+        buttons.append(
+            [InlineKeyboardButton(f"{icon} {o['name']}", callback_data=f"obj_{o['id']}")]
+        )
+    await update.message.reply_text(
+        f"✅ Карта *{mi_input}* найдена.\n\nВыберите объект для инвестирования:",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(buttons),
+    )
+    return WAITING_OBJECT
 
-@dp.callback_query(InvestStates.waiting_object, F.data.startswith('obj_'))
-async def process_object(callback: types.CallbackQuery, state: FSMContext):
-    obj_id = callback.data.replace('obj_', '')
-    objects = await get_objects()
-    obj = next((o for o in objects if o['id'] == obj_id), None)
-    obj_name = obj['name'] if obj else 'Объект'
-    await state.update_data(object_id=obj_id, object_name=obj_name)
-    await callback.message.answer(f'🏗 *{obj_name}*\n\nВведите сумму инвестиции в TON:\n\n_Минимум: 1 TON_', parse_mode='Markdown')
-    await state.set_state(InvestStates.waiting_amount)
-    await callback.answer()
+# ── Выбрать объект ───────────────────────────────────────────────────────────
+async def process_object(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    obj_id = query.data.replace("obj_", "")
 
-@dp.message(InvestStates.waiting_amount)
-async def process_amount(message: types.Message, state: FSMContext):
+    objects = get_objects()
+    obj = next((o for o in objects if o["id"] == obj_id), None)
+    obj_name = obj["name"] if obj else "Объект"
+
+    context.user_data["object_id"] = obj_id
+    context.user_data["object_name"] = obj_name
+
+    await query.edit_message_text(
+        f"🏗 *{obj_name}*\n\nВведите сумму инвестиции в TON:\n\n_Минимум: 1 TON_",
+        parse_mode="Markdown",
+    )
+    return WAITING_AMOUNT
+
+# ── Ввести сумму ─────────────────────────────────────────────────────────────
+async def process_amount(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        amount = float(message.text.strip().replace(',', '.'))
+        amount = float(update.message.text.strip().replace(",", "."))
         if amount < 1:
             raise ValueError
     except ValueError:
-        await message.answer('❌ Введите корректную сумму (минимум 1 TON). Например: 10 или 10.5')
-        return
-    await state.update_data(amount=amount)
-    data = await state.get_data()
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f'💎 Подтвердить {amount} TON', callback_data=f'pay_{amount}')],
-        [InlineKeyboardButton(text='❌ Отмена', callback_data='cancel')],
-    ])
-    await message.answer(
-        f'📋 *Подтверждение инвестиции*\n\n'
-        f'Объект: {data.get("object_name")}\n'
-        f'Сумма: *{amount} TON*\n'
-        f'Карта: {data.get("mi_number")}',
-        parse_mode='Markdown',
-        reply_markup=kb
-    )
-
-@dp.callback_query(F.data.startswith('pay_'))
-async def process_payment(callback: types.CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    tx_hash = hashlib.sha256(
-        f"{data.get('card_id')}{data.get('object_id')}{data.get('amount')}{time.time()}".encode()
-    ).hexdigest()
-    async with httpx.AsyncClient() as client:
-        await client.post(
-            f'{SUPABASE_URL}/rest/v1/investments',
-            headers=sb_headers(),
-            json={
-                'card_id': data.get('card_id'),
-                'object_id': data.get('object_id'),
-                'amount_ton': data.get('amount'),
-                'tx_hash': tx_hash,
-                'status': 'confirmed',
-            }
+        await update.message.reply_text(
+            "❌ Введите корректную сумму (минимум 1 TON). Например: 10 или 10.5"
         )
-    await callback.message.answer(
-        f'✅ *Инвестиция зафиксирована!*\n\n'
-        f'Объект: {data.get("object_name")}\n'
-        f'Сумма: *{data.get("amount")} TON*\n'
-        f'Карта: {data.get("mi_number")}\n'
-        f'TX: `{tx_hash[:16]}...`\n\n'
-        f'[Открыть личный кабинет]({PLATFORM_URL}/dashboard)',
-        parse_mode='Markdown'
+        return WAITING_AMOUNT
+
+    context.user_data["amount"] = amount
+    data = context.user_data
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                f"💎 Подтвердить {amount} TON", callback_data=f"pay_{amount}"
+            )
+        ],
+        [InlineKeyboardButton("❌ Отмена", callback_data="cancel")],
+    ]
+    await update.message.reply_text(
+        f"📋 *Подтверждение инвестиции*\n\n"
+        f"Объект: {data.get('object_name')}\n"
+        f"Сумма: *{amount} TON*\n"
+        f"Карта: {data.get('mi_number')}",
+        parse_mode="Markdown",
+        reply_markup=InlineKeyboardMarkup(keyboard),
     )
-    await state.clear()
-    await callback.answer()
+    return WAITING_AMOUNT
 
-@dp.callback_query(F.data == 'portfolio')
-async def cb_portfolio(callback: types.CallbackQuery):
-    await callback.message.answer(f'📊 Ваш инвестиционный портфель:\n{PLATFORM_URL}/dashboard')
-    await callback.answer()
+# ── Подтвердить оплату (фиктивная) ──────────────────────────────────────────
+async def pay_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
 
-@dp.callback_query(F.data == 'cancel')
-async def cb_cancel(callback: types.CallbackQuery, state: FSMContext):
-    await state.clear()
-    await callback.message.answer('Операция отменена.')
-    await callback.answer()
+    data = context.user_data
+    tx_hash = f"TX-{uuid.uuid4().hex[:8].upper()}"
 
-# ===== ДОБАВЛЕНО: обработчик обычных сообщений =====
-@dp.message()
-async def echo_all(message: types.Message):
-    await message.answer("Я понимаю только команды /start и кнопки. Используй их.")
-# =================================================
+    success = save_investment(
+        card_id=data.get("card_id"),
+        object_id=data.get("object_id"),
+        amount_ton=data.get("amount"),
+        tx_hash=tx_hash,
+    )
 
-async def main():
-    await start_web_server()
-    await dp.start_polling(bot)
+    if success:
+        await query.edit_message_text(
+            f"✅ *Инвестиция зафиксирована!*\n\n"
+            f"Объект: {data.get('object_name')}\n"
+            f"Сумма: *{data.get('amount')} TON*\n"
+            f"Карта: {data.get('mi_number')}\n"
+            f"TX: `{tx_hash[:16]}...`\n\n"
+            f"[Открыть личный кабинет]({PLATFORM_URL}/dashboard)",
+            parse_mode="Markdown",
+        )
+    else:
+        await query.edit_message_text(
+            "❌ Ошибка при сохранении инвестиции. Попробуйте позже."
+        )
+    context.user_data.clear()
+    return ConversationHandler.END
 
-if __name__ == '__main__':
-    asyncio.run(main())
+# ── Callback: Портфель ──────────────────────────────────────────────────────
+async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        f"📊 Ваш инвестиционный портфель:\n{PLATFORM_URL}/dashboard"
+    )
+
+# ── Callback: Отмена ─────────────────────────────────────────────────────────
+async def cancel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text("Операция отменена.")
+    context.user_data.clear()
+    return ConversationHandler.END
+
+# ── Health check сервер ──────────────────────────────────────────────────────
+class HealthCheck(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, fmt, *args): return
+
+def run_web_server():
+    port = int(os.getenv("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), HealthCheck)
+    logger.info(f"Health server on :{port}")
+    server.serve_forever()
+
+# ── Запуск ────────────────────────────────────────────────────────────────────
+async def run_bot_async():
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    # ConversationHandler
+    conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(invest_callback, pattern="^invest$")],
+        states={
+            WAITING_MI_NUMBER: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, process_mi_number)
+            ],
+            WAITING_OBJECT: [
+                CallbackQueryHandler(process_object, pattern="^obj_")
+            ],
+            WAITING_AMOUNT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, process_amount),
+                CallbackQueryHandler(pay_callback, pattern="^pay_"),
+                CallbackQueryHandler(cancel_callback, pattern="^cancel$"),
+            ],
+        },
+        fallbacks=[CommandHandler("start", start)],
+    )
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(invest_callback, pattern="^invest$"))
+    app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
+    app.add_handler(CallbackQueryHandler(cancel_callback, pattern="^cancel$"))
+    app.add_handler(conv)
+
+    logger.info("Bot starting...")
+    await app.initialize()
+    await app.updater.start_polling(drop_pending_updates=True)
+    await app.start()
+
+    while True:
+        await asyncio.sleep(3600)
+
+if __name__ == "__main__":
+    Thread(target=run_web_server, daemon=True).start()
+    asyncio.run(run_bot_async())
