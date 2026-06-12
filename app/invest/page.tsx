@@ -76,42 +76,62 @@ export default function InvestPage() {
 
         {/* Карта */}
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '11px', color: '#6B7280', letterSpacing: '0.15em', marginBottom: '16px' }}>
+          <div style={{ fontSize: '11px', color: '#6B7280', letterSpacing: '0.15em', marginBottom: '20px' }}>
             ФИЗИЧЕСКАЯ КАРТА
           </div>
-          <div style={{
-            display: 'inline-block',
-            width: '340px', height: '200px',
-            background: 'linear-gradient(135deg, #1A1A2E 0%, #0D0D14 60%, #1A1410 100%)',
-            borderRadius: '16px', border: '1px solid #C9A84C33',
-            boxShadow: '0 20px 60px rgba(201,168,76,0.15), 0 0 0 1px rgba(201,168,76,0.1)',
-            position: 'relative', overflow: 'hidden', padding: '24px',
-            textAlign: 'left',
-          }}>
-            <div style={{ position: 'absolute', top: '-30px', right: '-30px', opacity: 0.06 }}>
-              <svg viewBox="0 0 120 120" width="120" height="120">
-                <polygon points="60,5 105,32.5 105,87.5 60,115 15,87.5 15,32.5" fill="none" stroke="#C9A84C" strokeWidth="2"/>
-              </svg>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '32px' }}>
-              <svg viewBox="0 0 32 32" width="28" height="28">
-                <polygon points="16,2 28,9 28,23 16,30 4,23 4,9" fill="none" stroke="#C9A84C" strokeWidth="1.5"/>
-                <circle cx="16" cy="16" r="3" fill="#C9A84C"/>
-              </svg>
-              <div style={{ fontSize: '9px', color: '#C9A84C66', letterSpacing: '0.2em' }}>МЕТАЛЛИЧЕСКАЯ</div>
-            </div>
-            <div style={{ fontSize: '11px', color: '#C9A84C', letterSpacing: '0.3em', marginBottom: '8px' }}>
-              МИ-184272
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#E8E8F0', letterSpacing: '0.1em' }}>МОДУЛИ</div>
-                <div style={{ fontSize: '9px', color: '#6B7280', letterSpacing: '0.15em' }}>КОНГЛОМЕРАТ</div>
+          <style>{`
+            .card-flip-container {
+              perspective: 1000px;
+              width: 380px;
+              height: 240px;
+              margin: 0 auto 16px;
+              cursor: pointer;
+            }
+            .card-flip-inner {
+              position: relative;
+              width: 100%;
+              height: 100%;
+              transform-style: preserve-3d;
+              transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            .card-flip-container:hover .card-flip-inner {
+              transform: rotateY(180deg);
+            }
+            .card-face {
+              position: absolute;
+              width: 100%;
+              height: 100%;
+              backface-visibility: hidden;
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 20px 60px rgba(201,168,76,0.2), 0 0 0 1px rgba(201,168,76,0.15);
+            }
+            .card-face img {
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+            }
+            .card-face-back {
+              transform: rotateY(180deg);
+            }
+          `}</style>
+
+          <div className="card-flip-container">
+            <div className="card-flip-inner">
+              <div className="card-face">
+                <img src="/invest-card-front.png" alt="Инвест карта Модули — лицевая" />
               </div>
-              <div style={{ fontSize: '9px', color: '#C9A84C66' }}>РЕЗИДЕНТ</div>
+              <div className="card-face card-face-back">
+                <img src="/invest-card-back.png" alt="Инвест карта Модули — обратная" />
+              </div>
             </div>
           </div>
-          <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
+
+          <div style={{ fontSize: '11px', color: '#374151', marginBottom: '12px' }}>
+            Наведите чтобы перевернуть карту
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px' }}>
             {['Металл', 'NFC-метка', 'QR-код', 'Индивидуальный номер'].map(function(f) {
               return (
                 <span key={f} style={{ fontSize: '10px', color: '#6B7280', display: 'flex', alignItems: 'center', gap: '4px' }}>
