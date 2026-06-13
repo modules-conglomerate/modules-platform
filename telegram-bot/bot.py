@@ -7,23 +7,14 @@ from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import (
-    Application,
-    CommandHandler,
-    CallbackQueryHandler,  # ← ВАЖНО
+    Application, CommandHandler, CallbackQueryHandler,
+    MessageHandler, filters, ContextTypes, ConversationHandler,
     PreCheckoutQueryHandler,
-    MessageHandler,
-    filters,
-    ContextTypes,
-    ConversationHandler,
 )
 
-# ── Состояние диалога ─────────────────────────────────────────────────────────
 ASK_ADDRESS = 1
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN        = os.getenv("BOT_TOKEN")
@@ -40,7 +31,6 @@ def sb_headers():
         "Content-Type": "application/json",
     }
 
-# ── Проверить: есть ли у пользователя карта ──────────────────────────────────
 def find_card_by_telegram(telegram_id: int):
     try:
         r = requests.get(
@@ -54,9 +44,7 @@ def find_card_by_telegram(telegram_id: int):
         logger.warning(f"find_card error: {e}")
         return None
 
-# ── Создать карту (после оплаты) ─────────────────────────────────────────────
 def create_mi_card(telegram_id: int, telegram_username: str) -> str:
-    # Генерируем 8-значный номер
     unique_code = f"МИ-{uuid.uuid4().hex[:8].upper()}"
     try:
         requests.post(
@@ -68,7 +56,7 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
                 "telegram_username": telegram_username,
                 "level": "resident",
                 "is_active": True,
-                "is_qualified": True,
+                "is_qualified": False,
                 "total_invested": 0,
             },
             timeout=10,
@@ -77,9 +65,8 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
         logger.error(f"create_mi_card error: {e}")
     return unique_code
 
-# ── Отправить инвойс ──────────────────────────────────────────────────────────
-async def send_invoice(chat_id: int, telegram_id: int, context):
-    await context.bot.send_invoice(
+def send_invoice(chat_id: int, telegram_id: int, context):
+    return context.bot.send_invoice(
         chat_id=chat_id,
         title="Металлическая карта Модули",
         description="Дизайн карты + статус квалифицированного инвестора",
@@ -89,116 +76,107 @@ async def send_invoice(chat_id: int, telegram_id: int, context):
         prices=[LabeledPrice("Металлическая карта", STARS_PRICE)],
     )
 
-# ── /start ────────────────────────────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     tg_username = update.effective_user.username or str(telegram_id)
 
     card = find_card_by_telegram(telegram_id)
-
     if card:
         welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nС возвращением!\n\nВаша карта: *{card['card_number']}*"
     else:
-        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nДобро пожаловать!\n\nДля получения карты оплатите *12 000 ⭐*."
+        mi_number = create_mi_card(telegram_id, tg_username)
+        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаш номер: *{mi_number}*"
+
+    # Сразу отправляем фото карты
+    with open(METAL_CARD_IMAGE, 'rb') as f:
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=f,
+            caption=welcome,
+            parse_mode="Markdown",
+        )
 
     keyboard = [
-        [InlineKeyboardButton("💳 Заказать металлическую карту (12 000 ⭐)", callback_data="order_card")],
+        [InlineKeyboardButton("💳 Приобрести металлическую карту (12 000 ⭐)", callback_data="order_card")],
         [InlineKeyboardButton("📊 Портфель", callback_data="portfolio")],
         [InlineKeyboardButton("🌐 Открыть платформу", url=PLATFORM_URL)],
     ]
-    await update.message.reply_text(
-        welcome, parse_mode="Markdown",
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Выберите действие:",
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-# ── Заказ карты ───────────────────────────────────────────────────────────────
 async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     telegram_id = update.effective_user.id
 
     card = find_card_by_telegram(telegram_id)
-    if card:
+    if card and card.get('is_qualified'):
         await query.edit_message_text(
-            f"💳 Карта уже есть: *{card['card_number']}*",
+            f"✅ Вы уже получили карту: *{card['card_number']}*",
             parse_mode="Markdown",
         )
         return
 
     await query.edit_message_text(
-        "💳 *Заказ металлической карты*\n\nСтоимость: *12 000 ⭐*",
+        f"💳 *Заказ металлической карты*\n\nСтоимость: *12 000 ⭐*",
         parse_mode="Markdown",
     )
 
     await send_invoice(query.message.chat_id, telegram_id, context)
 
-# ── Pre-checkout ──────────────────────────────────────────────────────────────
 async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.pre_checkout_query
     await query.answer(ok=True)
 
-# ── Успешная оплата ───────────────────────────────────────────────────────────
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    payment = update.message.successful_payment
-    payload = payment.invoice_payload  # order_card_telegram_id
-
-    parts = payload.split("_", 1)
-    if len(parts) < 2:
-        await update.message.reply_text("⚠️ Ошибка: неверный payload")
-        return
-
-    telegram_id = parts[1]
-    tg_username = update.effective_user.username or str(telegram_id)
-
-    card = find_card_by_telegram(telegram_id)
-    if card:
-        await update.message.reply_text(
-            f"✅ Карта уже есть: *{card['card_number']}*",
-            parse_mode="Markdown",
-        )
-        return
-
-    mi_number = create_mi_card(telegram_id, tg_username)
-
-    # Отправляем фото карты
-    with open(METAL_CARD_IMAGE, 'rb') as f:
-        await context.bot.send_photo(
-            chat_id=update.effective_chat.id,
-            photo=f,
-            caption=f"💳 *Ваша карта готова!*\n\nНомер: *{mi_number}*\nСтатус: **Квалифицированный инвестор**",
-            parse_mode="Markdown",
-        )
-
-    await update.message.reply_text(
-        "✉️ Введите адрес доставки (улица, дом, квартира, город, индекс):",
-    )
-    return ASK_ADDRESS
-
-# ── Получить адрес → записать в базу ─────────────────────────────────────────
-async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    address = update.message.text
     telegram_id = update.effective_user.id
     tg_username = update.effective_user.username or str(telegram_id)
 
     card = find_card_by_telegram(telegram_id)
     if not card:
-        await update.message.reply_text("⚠️ Карта не найдена. Напишите в поддержку.")
+        await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
+        return
+
+    # Сохраняем статус квалифицированного инвестора
+    requests.patch(
+        f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
+        headers=sb_headers(),
+        json={"is_qualified": True},
+        timeout=10,
+    )
+
+    await update.message.reply_text(
+        "✅ Оплата подтверждена!\n\n✉️ Введите адрес доставки:",
+    )
+    return ASK_ADDRESS
+
+async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    address = update.message.text.strip()
+    telegram_id = update.effective_user.id
+    tg_username = update.effective_user.username or str(telegram_id)
+
+    card = find_card_by_telegram(telegram_id)
+    if not card:
+        await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
         return ConversationHandler.END
 
-    try:
-        requests.patch(
-            f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
-            headers=sb_headers(),
-            json={"delivery_address": address},
-            timeout=10,
-        )
-        await update.message.reply_text(f"✅ Адрес сохранён: {address}")
-    except Exception as e:
-        logger.error(f"get_address error: {e}")
-        await update.message.reply_text("⚠️ Ошибка сохранения адреса. Напишите в поддержку.")
+    # Сохраняем адрес в базу
+    requests.patch(
+        f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
+        headers=sb_headers(),
+        json={"delivery_address": address},
+        timeout=10,
+    )
+
+    await update.message.reply_text(
+        f"✅ Адрес сохранён! Карта будет отправлена на почту.\n\nСтатус: **Квалифицированный инвестор**",
+        parse_mode="Markdown",
+    )
     return ConversationHandler.END
 
-# ── Портфель ──────────────────────────────────────────────────────────────────
 async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -206,7 +184,6 @@ async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
         f"📊 Ваш портфель:\n{PLATFORM_URL}/dashboard"
     )
 
-# ── Health check сервер ──────────────────────────────────────────────────────
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -220,22 +197,15 @@ def run_web_server():
     logger.info(f"Health server on :{port}")
     server.serve_forever()
 
-# ── Запуск ────────────────────────────────────────────────────────────────────
 async def run_bot_async():
     app = Application.builder().token(BOT_TOKEN).build()
 
     conv = ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback),
-        ],
+        entry_points=[MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback)],
         states={
-            ASK_ADDRESS: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, get_address),
-            ],
+            ASK_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)],
         },
-        fallbacks=[
-            CommandHandler("start", start),
-        ],
+        fallbacks=[CommandHandler("start", start)],
         allow_reentry=True,
     )
 
