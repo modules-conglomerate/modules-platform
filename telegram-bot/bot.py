@@ -21,7 +21,7 @@ BOT_TOKEN        = os.getenv("BOT_TOKEN")
 SUPABASE_URL     = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL     = "https://modules-platform.vercel.app"
-STARS_PRICE      = 12000
+STARS_PRICE      = 1
 METAL_CARD_IMAGE = "assets/invest-card-front.png"
 
 def sb_headers():
