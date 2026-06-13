@@ -2,8 +2,8 @@ import os
 import logging
 import uuid
 import requests
-from threading import Thread
-from http.server import BaseHTTPRequestHandler, HTTPServer
+import sys
+import fcntl # Только для Linux/Render
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
@@ -19,13 +19,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN            = os.getenv("BOT_TOKEN")
-SUPABASE_URL         = os.getenv("SUPABASE_URL")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-PLATFORM_URL         = "https://конгломерат-модули.рф"
-STARS_PRICE          = 1
-METAL_CARD_IMAGE     = "assets/invest-card-front.png"
-PORT                 = int(os.getenv("PORT", 10000))
+PLATFORM_URL = "https://конгломерат-модули.рф"
+STARS_PRICE = 1
+METAL_CARD_IMAGE = "assets/invest-card-front.png"
 
 # ── Функции работы с базой ──────────────────────────────────────────────────
 def sb_headers():
@@ -40,7 +39,7 @@ def find_card_by_telegram(telegram_id: int):
     try:
         r = requests.get(
             f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}&select=*",
-            headers=sb_headers(), timeout=8,
+            headers=sb_headers(), timeout=5,
         )
         data = r.json()
         return data[0] if data else None
@@ -58,103 +57,59 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
                 "card_number": unique_code, "telegram_id": telegram_id,
                 "telegram_username": telegram_username, "level": "resident",
                 "is_active": True, "is_qualified": False, "total_invested": 0,
-            }, timeout=10,
+            }, timeout=5,
         )
     except Exception as e:
         logger.error(f"create_mi_card error: {e}")
     return unique_code
 
-# ── Хендлеры бота ─────────────────────────────────────────────────────────────
-async def send_invoice(chat_id: int, telegram_id: int, context):
-    await context.bot.send_invoice(
-        chat_id=chat_id, title="Металлическая карта Модули",
-        description="Фирменная карта с персональным МИ номером",
-        payload=f"order_card_{telegram_id}", provider_token="",
-        currency="XTR", prices=[LabeledPrice("Металлическая карта", STARS_PRICE)],
-    )
-
+# ── Хендлеры ──────────────────────────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
-    tg_username = update.effective_user.username or str(telegram_id)
     card = find_card_by_telegram(telegram_id)
     
     if card:
         status = "✅ Квалифицированный инвестор" if card.get('is_qualified') else "❌ Не квалифицирован"
         welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаша карта: *{card['card_number']}*\n\nСтатус: {status}"
     else:
-        mi_number = create_mi_card(telegram_id, tg_username)
+        mi_number = create_mi_card(telegram_id, update.effective_user.username or str(telegram_id))
         welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаш номер: *{mi_number}*\n\nСтатус: ❌ Не квалифицирован"
 
-    if os.path.exists(METAL_CARD_IMAGE):
-        with open(METAL_CARD_IMAGE, 'rb') as f:
-            await context.bot.send_photo(update.effective_chat.id, photo=f, caption=welcome, parse_mode="Markdown")
-    else:
-        await context.bot.send_message(update.effective_chat.id, text=welcome, parse_mode="Markdown")
-
+    await context.bot.send_message(update.effective_chat.id, text=welcome, parse_mode="Markdown")
     keyboard = [
-        [InlineKeyboardButton("💳 Получить статус квалифицированного инвестора (12 000 ⭐)", callback_data="order_card")],
+        [InlineKeyboardButton("💳 Получить статус (12 000 ⭐)", callback_data="order_card")],
         [InlineKeyboardButton("📊 Портфель", callback_data="portfolio")],
-        [InlineKeyboardButton("🌐 Открыть платформу", url=PLATFORM_URL)],
     ]
     await context.bot.send_message(update.effective_chat.id, text="Выберите действие:", reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    telegram_id = update.effective_user.id
-    card = find_card_by_telegram(telegram_id)
-    if card and card.get('is_qualified'):
-        await query.edit_message_text(f"✅ Вы уже квалифицированы.", parse_mode="Markdown")
-        return
-    await send_invoice(query.message.chat_id, telegram_id, context)
-
-async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.pre_checkout_query.answer(ok=True)
-
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Оплата подтверждена! Пожалуйста, напишите ваши ФИО и адрес доставки:")
+    await update.message.reply_text("✅ Оплата подтверждена! Напишите ФИО и адрес:")
     return ASK_ADDRESS
 
 async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     address = update.message.text.strip()
     telegram_id = update.effective_user.id
-    
-    # Записываем адрес, статус заказа "ordered", но is_qualified остается False
     response = requests.patch(
         f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
         headers=sb_headers(),
         json={"delivery_address": address, "status": "ordered"},
-        timeout=10
+        timeout=5
     )
-    
     if response.status_code in (200, 204):
-        await update.message.reply_text(
-            "✅ **Заказ принят!**\n\n"
-            "Ваш адрес доставки сохранен. Мы приступаем к изготовлению и отправке вашей металлической карты.\n\n"
-            "Как только карта будет доставлена, ваш статус в Личном кабинете [конгломерат-модули.рф](https://конгломерат-модули.рф) будет обновлен до «Квалифицированный инвестор».",
-            parse_mode="Markdown",
-            disable_web_page_preview=True
-        )
+        await update.message.reply_text("✅ Заказ принят!")
         return ConversationHandler.END
-    else:
-        logger.error(f"Ошибка записи в Supabase: {response.text}")
-        await update.message.reply_text("⚠️ Ошибка сервера. Пожалуйста, попробуйте отправить адрес еще раз.")
-        return ASK_ADDRESS
-
-async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer()
-    await update.callback_query.edit_message_text(f"📊 Ваш портфель:\n{PLATFORM_URL}/dashboard")
-
-# ── Инфраструктура ────────────────────────────────────────────────────────────
-class HealthCheck(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200); self.end_headers(); self.wfile.write(b"OK")
-    def log_message(self, fmt, *args): pass
-
-def run_web_server():
-    HTTPServer(("0.0.0.0", PORT), HealthCheck).serve_forever()
+    return ASK_ADDRESS
 
 def main():
+    # Защита от дублей: создаем файл-блокировщик
+    pid_file = '/tmp/bot.pid'
+    fp = open(pid_file, 'w')
+    try:
+        fcntl.lockf(fp, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        logger.error("Бот уже запущен в другом процессе. Выход.")
+        sys.exit(0)
+
     app = Application.builder().token(BOT_TOKEN).build()
     
     conv = ConversationHandler(
@@ -166,12 +121,10 @@ def main():
     
     app.add_handler(conv)
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(order_card_callback, pattern="^order_card$"))
-    app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
-    app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
+    app.add_handler(CallbackQueryHandler(lambda u, c: u.callback_query.answer(), pattern=".*"))
     
+    logger.info("Бот запущен в единственном экземпляре.")
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    Thread(target=run_web_server, daemon=True).start()
     main()
