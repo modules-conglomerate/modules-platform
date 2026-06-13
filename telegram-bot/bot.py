@@ -21,7 +21,7 @@ BOT_TOKEN        = os.getenv("BOT_TOKEN")
 SUPABASE_URL     = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL     = "https://modules-platform.vercel.app"
-STARS_PRICE      = 1
+STARS_PRICE      = 1  # 1 звезда для теста
 METAL_CARD_IMAGE = "assets/invest-card-front.png"
 
 def sb_headers():
@@ -65,8 +65,8 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
         logger.error(f"create_mi_card error: {e}")
     return unique_code
 
-def send_invoice(chat_id: int, telegram_id: int, context):
-    return context.bot.send_invoice(
+async def send_invoice(chat_id: int, telegram_id: int, context):
+    await context.bot.send_invoice(
         chat_id=chat_id,
         title="Металлическая карта Модули",
         description="Дизайн карты + статус квалифицированного инвестора",
