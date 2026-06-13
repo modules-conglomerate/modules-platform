@@ -104,7 +104,7 @@ export default function LoginPage() {
               </div>
 
               {/* Яндекс */}
-              
+              <a
                 href={`https://oauth.yandex.ru/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_YANDEX_CLIENT_ID}&redirect_uri=https://modules-platform.vercel.app/auth/yandex/callback`}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
