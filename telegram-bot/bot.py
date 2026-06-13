@@ -5,10 +5,11 @@ import requests
 import asyncio
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from telegram import Update, LabeledPrice
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import (
     Application,
     CommandHandler,
+    CallbackQueryHandler,  # ← ВАЖНО
     PreCheckoutQueryHandler,
     MessageHandler,
     filters,
