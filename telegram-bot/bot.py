@@ -23,7 +23,7 @@ BOT_TOKEN            = os.getenv("BOT_TOKEN")
 SUPABASE_URL         = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL         = "https://конгломерат-модули.рф"
-STARS_PRICE          = 1
+STARS_PRICE          = 12000
 METAL_CARD_IMAGE     = "assets/invest-card-front.png"
 PORT                 = int(os.getenv("PORT", 10000))
 
