@@ -91,7 +91,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(update.effective_chat.id, text=welcome, parse_mode="Markdown")
 
     keyboard = [
-        [InlineKeyboardButton("💳 Получить статус (12 000 ⭐)", callback_data="order_card")],
+        [InlineKeyboardButton("💳 Получить статус квалифицированного инвестора (12 000 ⭐)", callback_data="order_card")],
         [InlineKeyboardButton("📊 Портфель", callback_data="portfolio")],
         [InlineKeyboardButton("🌐 Открыть платформу", url=PLATFORM_URL)],
     ]
@@ -111,7 +111,7 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.pre_checkout_query.answer(ok=True)
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Оплата подтверждена! Отправьте ФИО и адрес доставки:")
+    await update.message.reply_text("✅ Оплата подтверждена! Отправьте ФИО и адрес доставки Персональную карту конгломерат-Модули.рф:")
     return ASK_ADDRESS
 
 async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
