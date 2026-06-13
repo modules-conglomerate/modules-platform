@@ -23,7 +23,7 @@ BOT_TOKEN            = os.getenv("BOT_TOKEN")
 SUPABASE_URL         = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL         = "https://конгломерат-модули.рф"
-STARS_PRICE          = 12000
+STARS_PRICE          = 1
 METAL_CARD_IMAGE     = "assets/invest-card-front.png"
 PORT                 = int(os.getenv("PORT", 10000))
 
@@ -68,7 +68,7 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
 async def send_invoice(chat_id: int, telegram_id: int, context):
     await context.bot.send_invoice(
         chat_id=chat_id, title="Металлическая карта Модули",
-        description="Фирменная карта с персональным МИ номером + статус квалифицированного инвестора",
+        description="Фирменная карта с персональным МИ номером",
         payload=f"order_card_{telegram_id}", provider_token="",
         currency="XTR", prices=[LabeledPrice("Металлическая карта", STARS_PRICE)],
     )
@@ -77,6 +77,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     telegram_id = update.effective_user.id
     tg_username = update.effective_user.username or str(telegram_id)
     card = find_card_by_telegram(telegram_id)
+    
     if card:
         status = "✅ Квалифицированный инвестор" if card.get('is_qualified') else "❌ Не квалифицирован"
         welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаша карта: *{card['card_number']}*\n\nСтатус: {status}"
@@ -111,22 +112,29 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.pre_checkout_query.answer(ok=True)
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Оплата подтверждена! Отправьте ФИО и адрес доставки:")
+    await update.message.reply_text("✅ Оплата подтверждена! Пожалуйста, напишите ваши ФИО и адрес доставки:")
     return ASK_ADDRESS
 
 async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     address = update.message.text.strip()
     telegram_id = update.effective_user.id
     
+    # Записываем адрес, статус заказа "ordered", но is_qualified остается False
     response = requests.patch(
         f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
         headers=sb_headers(),
-        json={"delivery_address": address, "is_qualified": True},
+        json={"delivery_address": address, "status": "ordered"},
         timeout=10
     )
     
     if response.status_code in (200, 204):
-        await update.message.reply_text("✅ Адрес сохранён! Статус: **Квалифицированный инвестор**", parse_mode="Markdown")
+        await update.message.reply_text(
+            "✅ **Заказ принят!**\n\n"
+            "Ваш адрес доставки сохранен. Мы приступаем к изготовлению и отправке вашей металлической карты.\n\n"
+            "Как только карта будет доставлена, ваш статус в Личном кабинете [конгломерат-модули.рф](https://конгломерат-модули.рф) будет обновлен до «Квалифицированный инвестор».",
+            parse_mode="Markdown",
+            disable_web_page_preview=True
+        )
         return ConversationHandler.END
     else:
         logger.error(f"Ошибка записи в Supabase: {response.text}")
@@ -149,7 +157,6 @@ def run_web_server():
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
     
-    # ConversationHandler должен стоять ПЕРВЫМ
     conv = ConversationHandler(
         entry_points=[MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback)],
         states={ASK_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)]},
