@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN            = os.getenv("BOT_TOKEN")
 SUPABASE_URL         = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-PLATFORM_URL         = "https://modules-platform.vercel.app"
-STARS_PRICE          = 1
+PLATFORM_URL         = "https://конгломерат-модули.рф"
+STARS_PRICE          = 12000
 METAL_CARD_IMAGE     = "assets/invest-card-front.png"
 PORT                 = int(os.getenv("PORT", 10000))
 
