@@ -99,12 +99,31 @@ export default function LoginPage() {
 
           {step === 'vk' && (
             <div>
-              <div style={{ fontSize: '10px', color: '#6B7280', letterSpacing: '0.1em', marginBottom: '14px', textAlign: 'center' }}>
-                ШАГ 1 — АВТОРИЗАЦИЯ ЧЕРЕЗ VK ID
+              <div style={{ fontSize: '10px', color: '#6B7280', letterSpacing: '0.1em', marginBottom: '16px', textAlign: 'center' }}>
+                ШАГ 1 — ВЫБЕРИТЕ СПОСОБ ВХОДА
               </div>
-              <div ref={ref} style={{ minHeight: '44px', marginBottom: '8px' }} />
+
+              {/* Яндекс */}
+              
+                href={`https://oauth.yandex.ru/authorize?response_type=code&client_id=${process.env.NEXT_PUBLIC_YANDEX_CLIENT_ID}&redirect_uri=https://modules-platform.vercel.app/auth/yandex/callback`}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                  width: '100%', padding: '13px', marginBottom: '10px',
+                  background: '#FC3F1D', border: 'none', borderRadius: '8px',
+                  color: '#fff', fontSize: '13px', fontWeight: 700, textDecoration: 'none',
+                }}
+              >
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="white">
+                  <path d="M2.04 12c0-5.523 4.476-10 10-10 5.522 0 10 4.477 10 10s-4.478 10-10 10c-5.524 0-10-4.477-10-10zm11.32 4.688h1.962V7.312h-2.368L10 13.927l-2.954-6.615H4.678v9.376H6.64V9.73l3.25 6.958h.836l3.25-6.958-.617 6.958z"/>
+                </svg>
+                Войти через Яндекс ID
+              </a>
+
+              {/* VK (оставляем как запасной) */}
+              <div ref={ref} style={{ minHeight: '44px' }} />
+
               {error && (
-                <div style={{ padding: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', fontSize: '11px', color: '#FCA5A5', marginTop: '12px' }}>
+                <div style={{ padding: '8px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', fontSize: '11px', color: '#FCA5A5', marginTop: '10px' }}>
                   {error}
                 </div>
               )}
