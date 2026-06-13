@@ -24,9 +24,8 @@ BOT_TOKEN          = os.getenv("BOT_TOKEN")
 SUPABASE_URL       = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL       = "https://modules-platform.vercel.app"
-STARS_PRICE        = 1  # 12000 стоимость металической инвест карты в фирменном дизайне)
+STARS_PRICE        = 1  # 1 звезда для теста
 METAL_CARD_IMAGE   = "https://modules-platform.vercel.app/invest-card-back.png"
-WEBHOOK_URL        = os.getenv("WEBHOOK_URL")  # https://your-bot-domain.com/webhook
 
 def sb_headers():
     return {
@@ -389,15 +388,10 @@ async def run_bot():
     app.add_handler(card_conv)
     app.add_handler(invest_conv)
 
-    logger.info("Bot started (webhook mode)")
+    logger.info("Bot started")
 
-    # Запуск вебхука вместо polling
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=int(os.getenv("PORT", 8080)),
-        url_path="webhook",
-        webhook_url=WEBHOOK_URL
-    )
+    # Запуск polling (для Render) с drop_pending_updates=True
+    app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
     Thread(target=run_web_server, daemon=True).start()
