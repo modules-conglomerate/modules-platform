@@ -24,8 +24,8 @@ BOT_TOKEN          = os.getenv("BOT_TOKEN")
 SUPABASE_URL       = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL       = "https://modules-platform.vercel.app"
-STARS_PRICE        = 12000  # 12 000 звёздочек
-METAL_CARD_IMAGE   = "https://your-domain.com/assets/metal-card.jpg"  # ← замени на реальный URL
+STARS_PRICE        = 1  # 12 000 звёздочек
+METAL_CARD_IMAGE   = "https://modules-platform.vercel.app/invest-card-back.png"  # ← замени на реальный URL
 
 def sb_headers():
     return {
