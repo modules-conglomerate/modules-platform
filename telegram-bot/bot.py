@@ -3,6 +3,7 @@ import logging
 import uuid
 import requests
 import asyncio
+import sys
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
@@ -14,16 +15,26 @@ from telegram.ext import (
 
 ASK_ADDRESS = 1
 
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+# Настройка логирования
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN        = os.getenv("BOT_TOKEN")
-SUPABASE_URL     = os.getenv("SUPABASE_URL")
+# Переменные окружения
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-PLATFORM_URL     = "https://modules-platform.vercel.app"
-STARS_PRICE      = 1  # 1 звезда для теста
+PORT = int(os.getenv("PORT", 10000))
+RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "")
+
+# Константы
+PLATFORM_URL = "https://modules-platform.vercel.app"
+STARS_PRICE = 1  # 1 звезда для теста
 METAL_CARD_IMAGE = "assets/invest-card-front.png"
 
+# ================== Supabase функции ==================
 def sb_headers():
     return {
         "apikey": SUPABASE_SERVICE_KEY,
@@ -65,18 +76,21 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
         logger.error(f"create_mi_card error: {e}")
     return unique_code
 
+# ================== Функции бота ==================
 async def send_invoice(chat_id: int, telegram_id: int, context):
+    """Отправка счёта для оплаты звёздами (XTR)"""
     await context.bot.send_invoice(
         chat_id=chat_id,
         title="Металлическая карта Модули",
         description="Дизайн карты + статус квалифицированного инвестора",
         payload=f"order_card_{telegram_id}",
-        provider_token="",
+        provider_token="",  # Для звёзд - пустая строка
         currency="XTR",
         prices=[LabeledPrice("Металлическая карта", STARS_PRICE)],
     )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /start"""
     telegram_id = update.effective_user.id
     tg_username = update.effective_user.username or str(telegram_id)
 
@@ -87,12 +101,20 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mi_number = create_mi_card(telegram_id, tg_username)
         welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаш номер: *{mi_number}*"
 
-    # Сразу отправляем фото карты
-    with open(METAL_CARD_IMAGE, 'rb') as f:
-        await context.bot.send_photo(
+    # Отправка фото карты (если файл есть)
+    try:
+        with open(METAL_CARD_IMAGE, 'rb') as f:
+            await context.bot.send_photo(
+                chat_id=update.effective_chat.id,
+                photo=f,
+                caption=welcome,
+                parse_mode="Markdown",
+            )
+    except FileNotFoundError:
+        logger.warning(f"Файл {METAL_CARD_IMAGE} не найден")
+        await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            photo=f,
-            caption=welcome,
+            text=welcome,
             parse_mode="Markdown",
         )
 
@@ -108,6 +130,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик нажатия кнопки заказа карты"""
     query = update.callback_query
     await query.answer()
     telegram_id = update.effective_user.id
@@ -128,12 +151,13 @@ async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await send_invoice(query.message.chat_id, telegram_id, context)
 
 async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Предпроверка оплаты"""
     query = update.pre_checkout_query
     await query.answer(ok=True)
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик успешной оплаты"""
     telegram_id = update.effective_user.id
-    tg_username = update.effective_user.username or str(telegram_id)
 
     card = find_card_by_telegram(telegram_id)
     if not card:
@@ -154,9 +178,9 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
     return ASK_ADDRESS
 
 async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Сохранение адреса доставки"""
     address = update.message.text.strip()
     telegram_id = update.effective_user.id
-    tg_username = update.effective_user.username or str(telegram_id)
 
     card = find_card_by_telegram(telegram_id)
     if not card:
@@ -178,28 +202,56 @@ async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Портфель инвестора"""
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(
         f"📊 Ваш портфель:\n{PLATFORM_URL}/dashboard"
     )
 
+# ================== Health Check HTTP сервер ==================
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"OK")
-    def log_message(self, fmt, *args): return
+    
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+    
+    def log_message(self, fmt, *args):
+        pass  # Отключаем логирование health-check запросов
 
 def run_web_server():
-    port = int(os.getenv("PORT", 10000))
-    server = HTTPServer(("0.0.0.0", port), HealthCheck)
-    logger.info(f"Health server on :{port}")
+    """Запуск HTTP сервера для health checks"""
+    server = HTTPServer(("0.0.0.0", PORT), HealthCheck)
+    logger.info(f"Health server запущен на порту {PORT}")
     server.serve_forever()
 
+# ================== Keep-alive функция ==================
+async def keep_alive():
+    """Пинг сервера каждые 10 минут для предотвращения засыпания"""
+    if not RENDER_EXTERNAL_URL:
+        logger.warning("RENDER_EXTERNAL_URL не задан, keep-alive не работает")
+        return
+    
+    while True:
+        try:
+            url = f"https://{RENDER_EXTERNAL_URL}"
+            response = requests.get(url, timeout=5)
+            logger.info(f"Keep-alive ping: {response.status_code}")
+        except Exception as e:
+            logger.warning(f"Keep-alive error: {e}")
+        
+        await asyncio.sleep(600)  # 10 минут
+
+# ================== Запуск бота ==================
 async def run_bot_async():
+    """Запуск Telegram бота"""
     app = Application.builder().token(BOT_TOKEN).build()
 
+    # ConversationHandler для адреса доставки
     conv = ConversationHandler(
         entry_points=[MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback)],
         states={
@@ -209,20 +261,46 @@ async def run_bot_async():
         allow_reentry=True,
     )
 
+    # Добавляем обработчики
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(order_card_callback, pattern="^order_card$"))
     app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     app.add_handler(conv)
 
-    logger.info("Bot starting...")
+    logger.info("Bot запускается...")
     await app.initialize()
+    
+    # Запускаем polling с очисткой старых запросов
     await app.updater.start_polling(drop_pending_updates=True)
     await app.start()
 
-    while True:
-        await asyncio.sleep(3600)
+    # Запускаем keep-alive в фоне
+    asyncio.create_task(keep_alive())
 
+    # Держим бота активным
+    try:
+        while True:
+            await asyncio.sleep(3600)
+    except KeyboardInterrupt:
+        logger.info("Остановка бота...")
+        await app.stop()
+        await app.updater.stop()
+
+# ================== Точка входа ==================
 if __name__ == "__main__":
+    # Защита от двойного запуска (предотвращает Conflict)
+    pid_file = "/tmp/bot.pid"
+    if os.path.exists(pid_file):
+        logger.error("Бот уже запущен! Перезапустите сервис на Render.")
+        logger.error("Если проблема не решается - удалите файл /tmp/bot.pid")
+        sys.exit(1)
+    
+    with open(pid_file, "w") as f:
+        f.write(str(os.getpid()))
+    
+    # Запускаем health check сервер в отдельном потоке
     Thread(target=run_web_server, daemon=True).start()
+    
+    # Запускаем бота
     asyncio.run(run_bot_async())
