@@ -25,7 +25,7 @@ SUPABASE_URL       = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL       = "https://modules-platform.vercel.app"
 STARS_PRICE        = 1  # 1 звезда для теста
-METAL_CARD_IMAGE   = "https://modules-platform.vercel.app/invest-card-back.png"
+METAL_CARD_IMAGE   = "assets/invest-card-front.png"
 
 def sb_headers():
     return {
@@ -170,6 +170,7 @@ async def pre_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer(ok=True)
 
 # ── Успешная оплата ──────────────────────────────────────────────────────────
+# ── Успешная оплата ──────────────────────────────────────────────────────────
 async def success_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_id = update.effective_user.id
     card = find_card_by_telegram(tg_id)
@@ -180,12 +181,14 @@ async def success_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     update_card_qualified(tg_id)
 
-    await context.bot.send_photo(
-        chat_id=update.effective_chat.id,
-        photo=METAL_CARD_IMAGE,
-        caption=f"💳 *Ваш дизайн карты готов!*\n\nНомер: *{card['card_number']}*\nСтатус: **Квалифицированный инвестор**",
-        parse_mode="Markdown",
-    )
+    # Открываем файл картинки и отправляем
+    with open(METAL_CARD_IMAGE, 'rb') as f:
+        await context.bot.send_photo(
+            chat_id=update.effective_chat.id,
+            photo=f,
+            caption=f"💳 *Ваш дизайн карты готов!*\n\nНомер: *{card['card_number']}*\nСтатус: **Квалифицированный инвестор**",
+            parse_mode="Markdown",
+        )
 
     await update.message.reply_text(
         "✉️ Введите адрес доставки (улица, дом, квартира, город, индекс):",
