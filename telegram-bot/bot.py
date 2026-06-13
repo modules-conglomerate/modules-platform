@@ -2,7 +2,6 @@ import os
 import logging
 import uuid
 import requests
-import asyncio
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
@@ -34,6 +33,7 @@ def sb_headers():
         "apikey": SUPABASE_SERVICE_KEY,
         "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
         "Content-Type": "application/json",
+        "Prefer": "return=representation"
     }
 
 def find_card_by_telegram(telegram_id: int):
@@ -68,7 +68,7 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
 async def send_invoice(chat_id: int, telegram_id: int, context):
     await context.bot.send_invoice(
         chat_id=chat_id, title="Металлическая карта Модули",
-        description="Фирменная карты с персональным МИ номером + статус квалифицированного инвестора",
+        description="Фирменная карта с персональным МИ номером + статус квалифицированного инвестора",
         payload=f"order_card_{telegram_id}", provider_token="",
         currency="XTR", prices=[LabeledPrice("Металлическая карта", STARS_PRICE)],
     )
@@ -111,16 +111,27 @@ async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.pre_checkout_query.answer(ok=True)
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Оплата подтверждена! Отправьте ФИО и адрес доставки Персональную карту конгломерат-Модули.рф:")
+    await update.message.reply_text("✅ Оплата подтверждена! Отправьте ФИО и адрес доставки:")
     return ASK_ADDRESS
 
 async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     address = update.message.text.strip()
     telegram_id = update.effective_user.id
-    requests.patch(f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}", 
-                   headers=sb_headers(), json={"delivery_address": address, "is_qualified": True})
-    await update.message.reply_text("✅ Адрес сохранён! Статус: **Квалифицированный инвестор**", parse_mode="Markdown")
-    return ConversationHandler.END
+    
+    response = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
+        headers=sb_headers(),
+        json={"delivery_address": address, "is_qualified": True},
+        timeout=10
+    )
+    
+    if response.status_code in (200, 204):
+        await update.message.reply_text("✅ Адрес сохранён! Статус: **Квалифицированный инвестор**", parse_mode="Markdown")
+        return ConversationHandler.END
+    else:
+        logger.error(f"Ошибка записи в Supabase: {response.text}")
+        await update.message.reply_text("⚠️ Ошибка сервера. Пожалуйста, попробуйте отправить адрес еще раз.")
+        return ASK_ADDRESS
 
 async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.callback_query.answer()
@@ -137,16 +148,21 @@ def run_web_server():
 
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
+    
+    # ConversationHandler должен стоять ПЕРВЫМ
     conv = ConversationHandler(
         entry_points=[MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback)],
         states={ASK_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)]},
-        fallbacks=[], allow_reentry=True,
+        fallbacks=[CommandHandler("start", start)],
+        allow_reentry=True,
     )
+    
+    app.add_handler(conv)
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(order_card_callback, pattern="^order_card$"))
     app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
-    app.add_handler(conv)
+    
     app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
