@@ -2,6 +2,8 @@ import os
 import logging
 import uuid
 import requests
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
 from telegram.ext import (
     Application, CommandHandler, CallbackQueryHandler,
@@ -23,6 +25,21 @@ SUPABASE_URL     = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL     = "https://конгломерат-модули.рф"
 STARS_PRICE      = 1
+PORT             = int(os.getenv("PORT", 10000))
+
+# ── Health Check HTTP Server ──────────────────────────────────────────────────
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"OK")
+    def log_message(self, fmt, *args):
+        pass
+
+def run_http_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+    logger.info(f"HTTP server started on port {PORT}")
+    server.serve_forever()
 
 # ── Функции работы с базой ──────────────────────────────────────────────────
 def sb_headers():
@@ -164,6 +181,10 @@ async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 # ── Запуск ──────────────────────────────────────────────────────────────────────
 def main():
+    # Запускаем HTTP сервер в отдельном потоке
+    http_thread = threading.Thread(target=run_http_server, daemon=True)
+    http_thread.start()
+
     app = Application.builder().token(BOT_TOKEN).build()
 
     conv = ConversationHandler(
