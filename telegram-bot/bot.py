@@ -75,7 +75,7 @@ async def send_invoice(chat_id: int, telegram_id: int, context):
     await context.bot.send_invoice(
         chat_id=chat_id,
         title="Металлическая карта Модули",
-        description="Дизайн карты + статус квалифицированного инвестора",
+        description="Фирменная карты с персональным МИ номером + статус квалифицированного инвестора",
         payload=f"order_card_{telegram_id}",
         provider_token="",
         currency="XTR",
@@ -88,10 +88,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     card = find_card_by_telegram(telegram_id)
     if card:
-        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nС возвращением!\n\nВаша карта: *{card['card_number']}*"
+        # ✅ Показываем статус квалифицированного инвестора
+        if card.get('is_qualified'):
+            status = "✅ Квалифицированный инвестор"
+        else:
+            status = "❌ Не квалифицирован"
+        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nС возвращением!\n\nВаша карта: *{card['card_number']}*\n\nСтатус: {status}"
     else:
         mi_number = create_mi_card(telegram_id, tg_username)
-        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаш номер: *{mi_number}*"
+        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаш номер: *{mi_number}*\n\nСтатус: ❌ Не квалифицирован"
 
     try:
         with open(METAL_CARD_IMAGE, 'rb') as f:
@@ -110,7 +115,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     keyboard = [
-        [InlineKeyboardButton("💳 Приобрести металлическую карту (12 000 ⭐)", callback_data="order_card")],
+        [InlineKeyboardButton("💳 Получить статус квалифицированного инвестора (12 000 ⭐)", callback_data="order_card")],
         [InlineKeyboardButton("📊 Портфель", callback_data="portfolio")],
         [InlineKeyboardButton("🌐 Открыть платформу", url=PLATFORM_URL)],
     ]
@@ -134,7 +139,7 @@ async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     await query.edit_message_text(
-        f"💳 *Заказ металлической карты*\n\nСтоимость: *12 000 ⭐*",
+        f"💳 *Заказ металлической карты с персональным МИ-хххххххх*\n\nСтоимость: *12 000 ⭐*",
         parse_mode="Markdown",
     )
 
@@ -152,15 +157,20 @@ async def successful_payment_callback(update: Update, context: ContextTypes.DEFA
         await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
         return
 
-    requests.patch(
+    # ✅ Проверяем ответ Supabase
+    response = requests.patch(
         f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
         headers=sb_headers(),
         json={"is_qualified": True},
         timeout=10,
     )
+    if response.status_code not in (200, 204):
+        logger.error(f"Ошибка обновления статуса: {response.text}")
+        await update.message.reply_text("⚠️ Ошибка при сохранении статуса. Обратитесь в поддержку.")
+        return
 
     await update.message.reply_text(
-        "✅ Оплата подтверждена!\n\n✉️ Введите адрес доставки:",
+        "✅ Оплата подтверждена!\n\n✉️ Отправьте адрес доставки и имя получателя в формате:\nСтрана, регион, город, улица, дом, квартира, индекс, ФИО:",
     )
     return ASK_ADDRESS
 
@@ -173,12 +183,17 @@ async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
         return ConversationHandler.END
 
-    requests.patch(
+    # ✅ Проверяем ответ Supabase
+    response = requests.patch(
         f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
         headers=sb_headers(),
         json={"delivery_address": address},
         timeout=10,
     )
+    if response.status_code not in (200, 204):
+        logger.error(f"Ошибка сохранения адреса: {response.text}")
+        await update.message.reply_text("⚠️ Ошибка при сохранении адреса. Обратитесь в поддержку.")
+        return ConversationHandler.END
 
     await update.message.reply_text(
         f"✅ Адрес сохранён! Карта будет отправлена на почту.\n\nСтатус: **Квалифицированный инвестор**",
@@ -214,6 +229,7 @@ async def keep_alive():
         return
     while True:
         try:
+            # ✅ Исправлено: убираем дублирование https://
             url = f"https://{RENDER_EXTERNAL_URL}"
             response = requests.get(url, timeout=5)
             logger.info(f"Keep-alive ping: {response.status_code}")
@@ -229,11 +245,12 @@ async def run_bot_async():
         states={
             ASK_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)],
         },
-        fallbacks=[CommandHandler("start", start)],
+        fallbacks=[],  # ✅ Убрали start, чтобы не дублировать
         allow_reentry=True,
     )
 
-
+    # ✅ Добавляем CommandHandler для /start
+    app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(order_card_callback, pattern="^order_card$"))
     app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
@@ -246,8 +263,8 @@ async def run_bot_async():
 
     asyncio.create_task(keep_alive())
 
-    while True:
-        await asyncio.sleep(3600)
+    # ✅ Заменяем while True на нормальное ожидание
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
     pid_file = "/tmp/bot.pid"
