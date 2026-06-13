@@ -24,8 +24,9 @@ BOT_TOKEN          = os.getenv("BOT_TOKEN")
 SUPABASE_URL       = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL       = "https://modules-platform.vercel.app"
-STARS_PRICE        = 1  # 12 000 звёздочек
-METAL_CARD_IMAGE   = "https://modules-platform.vercel.app/invest-card-back.png"  # ← замени на реальный URL
+STARS_PRICE        = 1  # 12000 стоимость металической инвест карты в фирменном дизайне)
+METAL_CARD_IMAGE   = "https://modules-platform.vercel.app/invest-card-back.png"
+WEBHOOK_URL        = os.getenv("WEBHOOK_URL")  # https://your-bot-domain.com/webhook
 
 def sb_headers():
     return {
@@ -58,7 +59,6 @@ def find_card_by_telegram(telegram_id: int):
         return None
 
 def create_mi_card(telegram_id: int, telegram_username: str) -> str:
-    # Генерируем уникальный номер (8 цифр)
     hash_val = hashlib.md5(f"{telegram_id}{uuid.uuid4()}".encode()).hexdigest()
     number = str(int(hash_val[:8], 16))[:8].zfill(8)
     mi_number = f"МИ-{number}"
@@ -155,7 +155,6 @@ async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         parse_mode="Markdown",
     )
 
-    # Отправляем счёт
     await context.bot.send_invoice(
         chat_id=query.message.chat_id,
         title="Металлическая карта инвестора",
@@ -180,10 +179,8 @@ async def success_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
         return
 
-    # Обновляем статус в базе
     update_card_qualified(tg_id)
 
-    # Отправляем дизайн карты
     await context.bot.send_photo(
         chat_id=update.effective_chat.id,
         photo=METAL_CARD_IMAGE,
@@ -191,7 +188,6 @@ async def success_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown",
     )
 
-    # Запрашиваем адрес доставки
     await update.message.reply_text(
         "✉️ Введите адрес доставки (улица, дом, квартира, город, индекс):",
     )
@@ -207,7 +203,6 @@ async def process_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
         return
 
-    # Сохраняем адрес в базу (например, в поле `delivery_address`)
     try:
         requests.patch(
             f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{tg_id}",
@@ -394,13 +389,15 @@ async def run_bot():
     app.add_handler(card_conv)
     app.add_handler(invest_conv)
 
-    logger.info("Bot started")
-    await app.initialize()
-    await app.updater.start_polling(drop_pending_updates=True)
-    await app.start()
+    logger.info("Bot started (webhook mode)")
 
-    while True:
-        await asyncio.sleep(3600)
+    # Запуск вебхука вместо polling
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.getenv("PORT", 8080)),
+        url_path="webhook",
+        webhook_url=WEBHOOK_URL
+    )
 
 if __name__ == "__main__":
     Thread(target=run_web_server, daemon=True).start()
