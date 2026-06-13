@@ -233,7 +233,7 @@ async def run_bot_async():
         allow_reentry=True,
     )
 
-    app.add_handler(CommandHandler("start", start))
+
     app.add_handler(CallbackQueryHandler(order_card_callback, pattern="^order_card$"))
     app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
