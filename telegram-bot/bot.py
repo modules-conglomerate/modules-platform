@@ -15,8 +15,9 @@ from telegram.ext import (
 
 # ── Состояния диалога ────────────────────────────────────────────────────────
 WAITING_AMOUNT = 1
+WAITING_ADDRESS = 2
 
-logging.basicConfig(format="%(asctime)s - %(levelname)s - %(message)s", level=logging.INFO)
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN          = os.getenv("BOT_TOKEN")
@@ -24,6 +25,7 @@ SUPABASE_URL       = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
 PLATFORM_URL       = "https://modules-platform.vercel.app"
 STARS_PRICE        = 12000  # 12 000 звёздочек
+METAL_CARD_IMAGE   = "https://your-domain.com/assets/metal-card.jpg"  # ← замени на реальный URL
 
 def sb_headers():
     return {
@@ -56,8 +58,9 @@ def find_card_by_telegram(telegram_id: int):
         return None
 
 def create_mi_card(telegram_id: int, telegram_username: str) -> str:
+    # Генерируем уникальный номер (8 цифр)
     hash_val = hashlib.md5(f"{telegram_id}{uuid.uuid4()}".encode()).hexdigest()
-    number   = str(int(hash_val[:8], 16))[:8].zfill(8)
+    number = str(int(hash_val[:8], 16))[:8].zfill(8)
     mi_number = f"МИ-{number}"
 
     try:
@@ -65,12 +68,12 @@ def create_mi_card(telegram_id: int, telegram_username: str) -> str:
             f"{SUPABASE_URL}/rest/v1/investor_cards",
             headers=sb_headers(),
             json={
-                "card_number":       mi_number,
-                "telegram_id":       telegram_id,
+                "card_number": mi_number,
+                "telegram_id": telegram_id,
                 "telegram_username": telegram_username,
-                "level":             "resident",
-                "is_active":         True,
-                "total_invested":    0,
+                "level": "resident",
+                "is_active": True,
+                "total_invested": 0,
             },
             timeout=10,
         )
@@ -85,11 +88,11 @@ def save_investment(card_id: str, object_id: str, amount_ton: float, tx_hash: st
             f"{SUPABASE_URL}/rest/v1/investments",
             headers=sb_headers(),
             json={
-                "card_id":    card_id,
-                "object_id":  object_id,
+                "card_id": card_id,
+                "object_id": object_id,
                 "amount_ton": amount_ton,
-                "tx_hash":    tx_hash,
-                "status":     "confirmed",
+                "tx_hash": tx_hash,
+                "status": "confirmed",
             },
             timeout=10,
         )
@@ -98,30 +101,32 @@ def save_investment(card_id: str, object_id: str, amount_ton: float, tx_hash: st
         logger.error(f"save_investment: {e}")
         return False
 
+def update_card_qualified(telegram_id: int):
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
+            headers=sb_headers(),
+            json={"is_qualified": True},
+            timeout=10,
+        )
+    except Exception as e:
+        logger.error(f"update_card_qualified: {e}")
+
 # ── /start ────────────────────────────────────────────────────────────────────
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    tg_id       = update.effective_user.id
+    tg_id = update.effective_user.id
     tg_username = update.effective_user.username or str(tg_id)
 
     card = find_card_by_telegram(tg_id)
 
     if card:
-        welcome = (
-            f"⬡ *МОДУЛИ ИНВЕСТ*\n\n"
-            f"С возвращением!\n\n"
-            f"Ваша инвестиционная карта:\n"
-            f"*{card['card_number']}*"
-        )
+        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nС возвращением!\n\nВаша карта: *{card['card_number']}*"
     else:
-        welcome = (
-            f"⬡ *МОДУЛИ ИНВЕСТ*\n\n"
-            f"Добро пожаловать!\n\n"
-            f"Для получения инвестиционной карты необходимо оплатить *12 000 ⭐* (Telegram Stars).\n\n"
-            f"Нажмите «Оплатить» ниже."
-        )
+        mi_number = create_mi_card(tg_id, tg_username)
+        welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаш номер: *{mi_number}*"
 
     keyboard = [
-        [InlineKeyboardButton("💎 Оплатить 12 000 ⭐", callback_data="pay_stars")],
+        [InlineKeyboardButton("💳 Заказать металлическую карту (12 000 ⭐)", callback_data="order_card")],
         [InlineKeyboardButton("📊 Портфель", callback_data="portfolio")],
         [InlineKeyboardButton("🌐 Открыть платформу", url=PLATFORM_URL)],
     ]
@@ -130,36 +135,35 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=InlineKeyboardMarkup(keyboard),
     )
 
-# ── Оплата Stars ──────────────────────────────────────────────────────────────
-async def pay_stars_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# ── Заказ металлической карты ──────────────────────────────────────────────
+async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
 
     tg_id = update.effective_user.id
     card = find_card_by_telegram(tg_id)
-    if card:
-        await query.edit_message_text(
-            f"💳 У вас уже есть карта: *{card['card_number']}*",
-            parse_mode="Markdown",
-        )
+
+    if not card:
+        await query.edit_message_text("❌ Карта не найдена. Нажмите /start.")
         return
 
     await query.edit_message_text(
-        "💳 *Оплата инвестиционной карты*\n\n"
-        "Стоимость: *12 000 ⭐* (Telegram Stars)\n\n"
-        "После оплаты вы получите номер МИ-XXXXXXXX и сможете инвестировать в объекты.",
+        f"💳 *Заказ металлической карты*\n\n"
+        f"Номер: *{card['card_number']}*\n"
+        f"Стоимость: *12 000 ⭐*\n\n"
+        f"После оплаты вы получите дизайн карты и статус «Квалифицированный инвестор».",
         parse_mode="Markdown",
     )
 
     # Отправляем счёт
     await context.bot.send_invoice(
         chat_id=query.message.chat_id,
-        title="Инвестиционная карта Модули",
-        description="Получение номера МИ-XXXXXXXX для инвестиций в объекты конгломерата",
-        payload=f"card_payment_{tg_id}",
+        title="Металлическая карта инвестора",
+        description="Дизайн карты + статус квалифицированного инвестора",
+        payload=f"order_card_{tg_id}",
         provider_token="",  # Telegram Stars
         currency="XTR",
-        prices=[LabeledPrice("Карта инвестора", STARS_PRICE)],
+        prices=[LabeledPrice("Металлическая карта", STARS_PRICE)],
     )
 
 # ── Предчек ──────────────────────────────────────────────────────────────────
@@ -169,22 +173,54 @@ async def pre_checkout(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ── Успешная оплата ──────────────────────────────────────────────────────────
 async def success_payment(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    tg_id       = update.effective_user.id
-    tg_username = update.effective_user.username or str(tg_id)
-
+    tg_id = update.effective_user.id
     card = find_card_by_telegram(tg_id)
-    if card:
-        await update.message.reply_text(f"✅ Карта уже есть: *{card['card_number']}*", parse_mode="Markdown")
+
+    if not card:
+        await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
         return
 
-    mi_number = create_mi_card(tg_id, tg_username)
-    await update.message.reply_text(
-        f"✅ *Оплата подтверждена!*\n\n"
-        f"Ваша инвестиционная карта:\n"
-        f"*{mi_number}*\n\n"
-        f"Теперь вы можете инвестировать в объекты конгломерата.",
+    # Обновляем статус в базе
+    update_card_qualified(tg_id)
+
+    # Отправляем дизайн карты
+    await context.bot.send_photo(
+        chat_id=update.effective_chat.id,
+        photo=METAL_CARD_IMAGE,
+        caption=f"💳 *Ваш дизайн карты готов!*\n\nНомер: *{card['card_number']}*\nСтатус: **Квалифицированный инвестор**",
         parse_mode="Markdown",
     )
+
+    # Запрашиваем адрес доставки
+    await update.message.reply_text(
+        "✉️ Введите адрес доставки (улица, дом, квартира, город, индекс):",
+    )
+    return WAITING_ADDRESS
+
+# ── Обработка адреса доставки ──────────────────────────────────────────────
+async def process_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    address = update.message.text.strip()
+    tg_id = update.effective_user.id
+    card = find_card_by_telegram(tg_id)
+
+    if not card:
+        await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
+        return
+
+    # Сохраняем адрес в базу (например, в поле `delivery_address`)
+    try:
+        requests.patch(
+            f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{tg_id}",
+            headers=sb_headers(),
+            json={"delivery_address": address},
+            timeout=10,
+        )
+        await update.message.reply_text(f"✅ Адрес сохранён: {address}")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Ошибка сохранения адреса: {e}")
+
+    context.user_data.clear()
+    return ConversationHandler.END
 
 # ── Инвестировать ─────────────────────────────────────────────────────────────
 async def invest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -195,12 +231,10 @@ async def invest_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     card = find_card_by_telegram(tg_id)
 
     if not card:
-        await query.edit_message_text(
-            "❌ У вас нет инвестиционной карты.\n\nНажмите /start и оплатите 12 000 ⭐.",
-        )
+        await query.edit_message_text("❌ Карта не найдена. Нажмите /start.")
         return
 
-    context.user_data["card_id"]   = card["id"]
+    context.user_data["card_id"] = card["id"]
     context.user_data["mi_number"] = card["card_number"]
 
     objects = get_objects()
@@ -329,7 +363,19 @@ def run_web_server():
 async def run_bot():
     app = Application.builder().token(BOT_TOKEN).build()
 
-    conv = ConversationHandler(
+    # ConversationHandler для заказа карты (адрес доставки)
+    card_conv = ConversationHandler(
+        entry_points=[MessageHandler(filters.SUCCESSFUL_PAYMENT, success_payment)],
+        states={
+            WAITING_ADDRESS: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, process_address),
+            ],
+        },
+        fallbacks=[CommandHandler("start", start)],
+    )
+
+    # ConversationHandler для инвестиций
+    invest_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(invest_callback, pattern="^invest$")],
         states={
             WAITING_AMOUNT: [
@@ -342,11 +388,11 @@ async def run_bot():
     )
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(pay_stars_callback, pattern="^pay_stars$"))
+    app.add_handler(CallbackQueryHandler(order_card_callback, pattern="^order_card$"))
     app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout))
-    app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, success_payment))
-    app.add_handler(conv)
+    app.add_handler(card_conv)
+    app.add_handler(invest_conv)
 
     logger.info("Bot started")
     await app.initialize()
