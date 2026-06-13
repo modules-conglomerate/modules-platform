@@ -3,7 +3,6 @@ import logging
 import uuid
 import requests
 import asyncio
-import sys
 from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, LabeledPrice
@@ -21,14 +20,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN        = os.getenv("BOT_TOKEN")
-SUPABASE_URL     = os.getenv("SUPABASE_URL")
+BOT_TOKEN            = os.getenv("BOT_TOKEN")
+SUPABASE_URL         = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
-PLATFORM_URL     = "https://modules-platform.vercel.app"
-STARS_PRICE      = 1
-METAL_CARD_IMAGE = "assets/invest-card-front.png"
-PORT = int(os.getenv("PORT", 10000))
-RENDER_EXTERNAL_URL = os.getenv("RENDER_EXTERNAL_URL", "")
+PLATFORM_URL         = "https://modules-platform.vercel.app"
+STARS_PRICE          = 1
+METAL_CARD_IMAGE     = "assets/invest-card-front.png"
+PORT                 = int(os.getenv("PORT", 10000))
 
 def sb_headers():
     return {
@@ -88,192 +86,83 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     card = find_card_by_telegram(telegram_id)
     if card:
-        # ✅ Показываем статус квалифицированного инвестора
-        if card.get('is_qualified'):
-            status = "✅ Квалифицированный инвестор"
-        else:
-            status = "❌ Не квалифицирован"
+        status = "✅ Квалифицированный инвестор" if card.get('is_qualified') else "❌ Не квалифицирован"
         welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nС возвращением!\n\nВаша карта: *{card['card_number']}*\n\nСтатус: {status}"
     else:
         mi_number = create_mi_card(telegram_id, tg_username)
         welcome = f"⬡ *МОДУЛИ ИНВЕСТ*\n\nВаш номер: *{mi_number}*\n\nСтатус: ❌ Не квалифицирован"
 
-    try:
+    if os.path.exists(METAL_CARD_IMAGE):
         with open(METAL_CARD_IMAGE, 'rb') as f:
-            await context.bot.send_photo(
-                chat_id=update.effective_chat.id,
-                photo=f,
-                caption=welcome,
-                parse_mode="Markdown",
-            )
-    except FileNotFoundError:
-        logger.warning(f"Файл {METAL_CARD_IMAGE} не найден")
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=welcome,
-            parse_mode="Markdown",
-        )
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=f, caption=welcome, parse_mode="Markdown")
+    else:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=welcome, parse_mode="Markdown")
 
     keyboard = [
         [InlineKeyboardButton("💳 Получить статус квалифицированного инвестора (12 000 ⭐)", callback_data="order_card")],
         [InlineKeyboardButton("📊 Портфель", callback_data="portfolio")],
         [InlineKeyboardButton("🌐 Открыть платформу", url=PLATFORM_URL)],
     ]
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="Выберите действие:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-    )
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Выберите действие:", reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def order_card_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     telegram_id = update.effective_user.id
-
     card = find_card_by_telegram(telegram_id)
     if card and card.get('is_qualified'):
-        await query.edit_message_text(
-            f"✅ Вы уже получили карту: *{card['card_number']}*",
-            parse_mode="Markdown",
-        )
+        await query.edit_message_text(f"✅ Вы уже получили карту: *{card['card_number']}*", parse_mode="Markdown")
         return
-
-    await query.edit_message_text(
-        f"💳 *Заказ металлической карты с персональным МИ-хххххххх*\n\nСтоимость: *12 000 ⭐*",
-        parse_mode="Markdown",
-    )
-
+    await query.edit_message_text(f"💳 *Заказ металлической карты*\n\nСтоимость: *12 000 ⭐*", parse_mode="Markdown")
     await send_invoice(query.message.chat_id, telegram_id, context)
 
 async def precheckout_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.pre_checkout_query
-    await query.answer(ok=True)
+    await update.pre_checkout_query.answer(ok=True)
 
 async def successful_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    telegram_id = update.effective_user.id
-
-    card = find_card_by_telegram(telegram_id)
-    if not card:
-        await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
-        return
-
-    # ✅ Проверяем ответ Supabase
-    response = requests.patch(
-        f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
-        headers=sb_headers(),
-        json={"is_qualified": True},
-        timeout=10,
-    )
-    if response.status_code not in (200, 204):
-        logger.error(f"Ошибка обновления статуса: {response.text}")
-        await update.message.reply_text("⚠️ Ошибка при сохранении статуса. Обратитесь в поддержку.")
-        return
-
-    await update.message.reply_text(
-        "✅ Оплата подтверждена!\n\n✉️ Отправьте адрес доставки и имя получателя в формате:\nСтрана, регион, город, улица, дом, квартира, индекс, ФИО:",
-    )
+    await update.message.reply_text("✅ Оплата подтверждена!\n\n✉️ Отправьте адрес доставки и ФИО:")
     return ASK_ADDRESS
 
 async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     address = update.message.text.strip()
     telegram_id = update.effective_user.id
-
-    card = find_card_by_telegram(telegram_id)
-    if not card:
-        await update.message.reply_text("❌ Карта не найдена. Нажмите /start.")
-        return ConversationHandler.END
-
-    # ✅ Проверяем ответ Supabase
-    response = requests.patch(
-        f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
-        headers=sb_headers(),
-        json={"delivery_address": address},
-        timeout=10,
-    )
-    if response.status_code not in (200, 204):
-        logger.error(f"Ошибка сохранения адреса: {response.text}")
-        await update.message.reply_text("⚠️ Ошибка при сохранении адреса. Обратитесь в поддержку.")
-        return ConversationHandler.END
-
-    await update.message.reply_text(
-        f"✅ Адрес сохранён! Карта будет отправлена на почту.\n\nСтатус: **Квалифицированный инвестор**",
-        parse_mode="Markdown",
-    )
+    requests.patch(f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}", headers=sb_headers(), json={"delivery_address": address, "is_qualified": True})
+    await update.message.reply_text("✅ Адрес сохранён! Карта будет отправлена.", parse_mode="Markdown")
     return ConversationHandler.END
 
 async def portfolio_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text(
-        f"📊 Ваш портфель:\n{PLATFORM_URL}/dashboard"
-    )
+    await update.callback_query.answer()
+    await update.callback_query.edit_message_text(f"📊 Ваш портфель:\n{PLATFORM_URL}/dashboard")
 
 class HealthCheck(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"OK")
-    def do_HEAD(self):
-        self.send_response(200)
-        self.end_headers()
-    def log_message(self, fmt, *args): return
+    def log_message(self, fmt, *args): pass
 
 def run_web_server():
     server = HTTPServer(("0.0.0.0", PORT), HealthCheck)
-    logger.info(f"Health server on :{PORT}")
     server.serve_forever()
 
-async def keep_alive():
-    if not RENDER_EXTERNAL_URL:
-        logger.warning("RENDER_EXTERNAL_URL не задан, keep-alive не работает")
-        return
-    while True:
-        try:
-            # ✅ Исправлено: убираем дублирование https://
-            url = f"https://{RENDER_EXTERNAL_URL}"
-            response = requests.get(url, timeout=5)
-            logger.info(f"Keep-alive ping: {response.status_code}")
-        except Exception as e:
-            logger.warning(f"Keep-alive error: {e}")
-        await asyncio.sleep(600)
-
-async def run_bot_async():
+async def run_bot():
     app = Application.builder().token(BOT_TOKEN).build()
-
+    
     conv = ConversationHandler(
         entry_points=[MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_callback)],
-        states={
-            ASK_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)],
-        },
-        fallbacks=[],  # ✅ Убрали start, чтобы не дублировать
+        states={ASK_ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, get_address)]},
+        fallbacks=[],
         allow_reentry=True,
     )
 
-    # ✅ Добавляем CommandHandler для /start
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(order_card_callback, pattern="^order_card$"))
     app.add_handler(CallbackQueryHandler(portfolio_callback, pattern="^portfolio$"))
     app.add_handler(PreCheckoutQueryHandler(precheckout_callback))
     app.add_handler(conv)
 
-    logger.info("Bot starting...")
-    await app.initialize()
-    await app.updater.start_polling(drop_pending_updates=True)
-    await app.start()
-
-    asyncio.create_task(keep_alive())
-
-    # ✅ Заменяем while True на нормальное ожидание
-    await asyncio.Event().wait()
+    await app.run_polling(drop_pending_updates=True)
 
 if __name__ == "__main__":
-    pid_file = "/tmp/bot.pid"
-    if os.path.exists(pid_file):
-        logger.error("Бот уже запущен! Перезапустите сервис на Render.")
-        logger.error("Если проблема не решается - удалите файл /tmp/bot.pid")
-        sys.exit(1)
-    with open(pid_file, "w") as f:
-        f.write(str(os.getpid()))
-
     Thread(target=run_web_server, daemon=True).start()
-    asyncio.run(run_bot_async())
+    asyncio.run(run_bot())
