@@ -151,25 +151,27 @@ async def get_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
     address = update.message.text.strip()
     telegram_id = update.effective_user.id
     
-    # Обновляем адрес и статус в Supabase
+    # Отправляем запрос на обновление
     response = requests.patch(
         f"{SUPABASE_URL}/rest/v1/investor_cards?telegram_id=eq.{telegram_id}",
         headers=sb_headers(),
         json={
-            "delivery_address": address,
-            "is_qualified": True,
-            "order_status": "pending"
+            "delivery_address": address,   # ✅ поле должно точно совпадать с таблицей
+            "is_qualified": True,          # ✅ включаем статус
+            "status": "pending"            # ✅ меняем статус заказа
         },
         timeout=8,
     )
     
+    # Проверяем ответ
     if response.status_code in (200, 204):
         await update.message.reply_text(
             f"✅ Адрес сохранён!\n\nСтатус: **Квалифицированный инвестор**",
             parse_mode="Markdown"
         )
     else:
-        await update.message.reply_text("⚠️ Ошибка при сохранении. Обратитесь в поддержку.")
+        # Выводим текст ошибки для отладки
+        await update.message.reply_text(f"⚠️ Ошибка: {response.text}")
     
     return ConversationHandler.END
 
