@@ -101,7 +101,7 @@ export default function IoTPage() {
             <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '12px', lineHeight: 1.5 }}>
               Напишите в Telegram-бот — команда назрОС поможет с настройкой датчиков на вашем объекте.
             </div>
-            <a href="https://t.me/modules_invest_bot" target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', background: '#229ED9', borderRadius: '6px', color: '#fff', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
+            <a href="https://t.me/nazr_os_chat" target="_blank" rel="noopener noreferrer" style={{ padding: '8px 16px', background: '#229ED9', borderRadius: '6px', color: '#fff', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
               Написать в Telegram
             </a>
           </div>
